@@ -11,8 +11,7 @@ DEFREF=/.mounts/labs/simpsonlab/data/references/hs37d5.fa
 if [ $# -eq 0 ] || [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]
 then
     echo "$0 - performs variant calling on two BAMS"
-    echo "Usage: $0 NORMAL.BAM TUMOUR.BAM REGIONS.BED TARGETS.BED [REFERENCE=$DEFREF]
-    fastqdir bamdir [njobs=8] [ref=$DEFREF]"
+    echo "Usage: $0 NORMAL.BAM TUMOUR.BAM REGIONS.BED TARGETS.BED [REFERENCE=$DEFREF]"
     exit 
 fi
 
@@ -22,5 +21,5 @@ REGIONS=$3
 TARGETS=$4
 REFERENCE=${5-$DEFREF}
 
-samtools mpileup -C50 --positions $REGIONS -gf $REFERENCE $NORMAL $TUMOUR \
+samtools mpileup --output-tags DP,DP4,SP -C50 --positions $REGIONS -gf $REFERENCE $NORMAL $TUMOUR \
     | bcftools call --multiallelic-caller --targets-file $TARGETS --constrain alleles 
