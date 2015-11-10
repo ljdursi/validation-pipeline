@@ -52,6 +52,9 @@ function alignfastqs {
         inputs=$( ls ${BAMSUBDIR}/*.bam | xargs -n1 -I{} echo "INPUT="{} )
         java -Xmx${mem} -Xms${mem} -jar ${PICARDROOT}/MergeSamFiles.jar \
                 $inputs OUTPUT=${BAMSUBDIR}.bam VALIDATION_STRINGENCY=LENIENT MERGE_SEQUENCE_DICTIONARIES=true
+
+        module load samtools/0.1.19
+        samtools index ${BAMSUBDIR}.bam
     fi
 }
 

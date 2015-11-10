@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 module purge 
 module unuse /oicr/local/boutroslab/Modules/modulefiles
 module use /.mounts/labs/simpsonlab/modules/
@@ -22,6 +22,5 @@ REGIONS=$3
 TARGETS=$4
 REFERENCE=${5-$DEFREF}
 
-samtools mpileup -C50 --positions $REGIONS -gf $REFERENCE $1 $2 \
-    | bcftools call --multiallelic-caller --variants-only --targets-file $TARGETS --> ${3}.vcf
-
+samtools mpileup -C50 --positions $REGIONS -gf $REFERENCE $NORMAL $TUMOUR \
+    | bcftools call --multiallelic-caller --targets-file $TARGETS --constrain alleles 
