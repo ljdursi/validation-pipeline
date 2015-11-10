@@ -40,7 +40,7 @@ do
             base=beds/bysample/$( basename $file .selected.vcf )
 
             filebed=${base}.bed
-            cat ${file} | vcf2bed.py > ${filebed}
+            cat ${file} | vcf2bed.py | sed -e 's/^chr//' > ${filebed}
 
             fileinflatedbed=${base}_inflated.bed
             bedtools slop -i ${filebed} -b $SLOP -g beds/hg19.genome | bedtools merge -i - | sed -e 's/^chr//' > ${fileinflatedbed}
