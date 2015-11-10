@@ -28,5 +28,5 @@ java -Xmx${JMEM} -Xms${JMEM} -jar ${GATKROOT}/GenomeAnalysisTK.jar \
                 -R ${REFERENCE} \
                 -I ${BAM} \
                 -L ${BED} \
-                -o ${OUTDIR}/${base}_target_coverage${suffix} \
+                -o ${OUTDIR}/${base}_target_coverage${SUFFIX} \
                 -ct 1 -ct 10 -ct 20
