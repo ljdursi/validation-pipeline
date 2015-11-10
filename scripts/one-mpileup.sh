@@ -6,7 +6,7 @@ module use /.mounts/labs/simpsonlab/modules/
 module load samtools/1.2
 module load bcftools/1.1
 
-DEFREF=/.mounts/labs/simpsonlab/data/references/hs37d5.fa 
+DEFREF=/oicr/data/pancanxfer/validation/reference/bwa-0.6.2/genome.fa.gz
 
 if [ $# -eq 0 ] || [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]
 then

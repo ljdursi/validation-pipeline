@@ -27,6 +27,7 @@ do
         inflatedbed=${arraybed%.bed}_inflated.bed
         bedtools slop -i ${arraybed} -b $SLOP -g beds/hg19.genome | bedtools merge -i - > ${inflatedbed}
         bgzip ${inflatedbed}
+        zcat ${inflatedbed}.gz > ${inflatedbed}
         tabix -p bed ${inflatedbed}.gz
 
         arraytargets=${arrayvcf%.vcf}.targets
@@ -44,9 +45,11 @@ do
             fileinflatedbed=${base}_inflated.bed
             bedtools slop -i ${filebed} -b $SLOP -g beds/hg19.genome | bedtools merge -i - | sed -e 's/^chr//' > ${fileinflatedbed}
             bgzip ${fileinflatedbed}
+            zcat ${fileinflatedbed}.gz > ${fileinflatedbed}
             tabix -p bed ${fileinflatedbed}.gz
 
             bcftools query -f'%CHROM\t%POS\t%REF,%ALT\n' <( cat ${file} | grep -v 'Callers=smufin;' | sed -e 's/^chr//' ) | bgzip -c > ${base}_targets.gz
+            zcat ${base}_targets.gz > ${base}_targets
             tabix -p vcf ${base}_targets.gz
         done
     done
