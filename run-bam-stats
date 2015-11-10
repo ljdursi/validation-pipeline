@@ -2,14 +2,14 @@
 
 for bam in remappedbams/*.bam
 do 
-    qsub -cwd -e logs -o logs -l h_vmem=5g ./scripts/bam-stats.sh ${bam} remappedbams/stats
-
     sample=$( basename $bam .bam )
+    qsub -cwd -e logs -o logs -l h_vmem=5g ./scripts/bam-stats.sh ${bam} remappedbams/${sample}
+
     donor=$( grep $sample metadata/sample-directory.txt | awk '{print $1}' )
     if [ ! -z "$donor" ]
     then 
-        qsub -cwd -e logs -o logs -l h_vmem=6g ./scripts/bam-depth.sh ${bam} beds/Array_2_snv_mnv.bed remappedbams/stats _snv_mnv_array2
-        qsub -cwd -e logs -o logs -l h_vmem=6g ./scripts/bam-depth.sh ${bam} beds/bysample/${donor}.snv_mnv.bed remappedbams/stats _snv_mnv_${donor}
+        qsub -cwd -e logs -o logs -l h_vmem=9g ./scripts/bam-depth.sh ${bam} beds/Array_2_snv_mnv.bed remappedbams/${sample}  _snv_mnv_array2
+        qsub -cwd -e logs -o logs -l h_vmem=9g ./scripts/bam-depth.sh ${bam} beds/bysample/${donor}.snv_mnv.bed remappedbams/${sample} _snv_mnv_${donor}
     fi
 done
 
