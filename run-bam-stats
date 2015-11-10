@@ -8,8 +8,8 @@ do
     donor=$( grep $sample metadata/sample-directory.txt | awk '{print $1}' )
     if [ ! -z "$donor" ]
     then 
-        qsub -cwd -e logs -o logs -l h_vmem=6g ./scripts/bam-depth.sh ${bam} beds/Array_2_snv_mnv_inflated.bed remappedbams/stats _snv_mnv_array2
-        qsub -cwd -e logs -o logs -l h_vmem=6g ./scripts/bam-depth.sh ${bam} beds/bysample/${donor}_snv_mnv_inflated.bed remappedbams/stats _snv_mnv_${donor}
+        qsub -cwd -e logs -o logs -l h_vmem=6g ./scripts/bam-depth.sh ${bam} beds/Array_2_snv_mnv.bed remappedbams/stats _snv_mnv_array2
+        qsub -cwd -e logs -o logs -l h_vmem=6g ./scripts/bam-depth.sh ${bam} beds/bysample/${donor}_snv_mnv.bed remappedbams/stats _snv_mnv_${donor}
     fi
 done
 
