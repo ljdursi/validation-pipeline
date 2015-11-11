@@ -22,8 +22,8 @@ SUFFIX=$4
 REFERENCE=${5-$DEFREF}
 
 base=$( basename $BAM .bam )
-JMEM=8g
-java -Xmx${JMEM} -Xms${JMEM} -jar ${GATKROOT}/GenomeAnalysisTK.jar \
+JMEM=4g
+java -Xmx${JMEM} -jar ${GATKROOT}/GenomeAnalysisTK.jar \
                 -T DepthOfCoverage \
                 -R ${REFERENCE} \
                 -I ${BAM} \
