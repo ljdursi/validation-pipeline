@@ -25,7 +25,7 @@ REFERENCE=${6-$DEFREF}
 mpileupdir=/oicr/data/pancanxfer/validation/mpileups
 
 mkdir -p ${mpileupdir}
-mpileupfile=${mpileupdir}/$( basename OUTPUT .vcf ).mpileup
+mpileupfile=${mpileupdir}/$( basename $OUTPUT .vcf ).mpileup
 
 if [ ! -f ${mpileupfile} ]
 then
