@@ -22,5 +22,16 @@ TARGETS=$4
 OUTPUT=$5
 REFERENCE=${6-$DEFREF}
 
-samtools mpileup --output-tags DP,DP4,SP -C50 --positions $REGIONS -gf $REFERENCE $NORMAL $TUMOUR \
-    | bcftools call --multiallelic-caller --targets-file $TARGETS --constrain alleles > $OUTPUT
+mpileupdir=/oicr/data/pancanxfer/validation/mpileups
+
+mkdir -p ${mpileupdir}
+mpileupfile=${mpileupdir}/$( basename OUTPUT .vcf ).mpileup
+
+if [ ! -f ${mpileupfile} ]
+then
+    samtools mpileup --output-tags DP,DP4,SP -C50 --positions $REGIONS -gf $REFERENCE $NORMAL $TUMOUR > ${mpileupfile}
+fi
+if [ -f ${mpileupfile} ] && [ ! -f ${OUTPUT} ]
+then
+    bcftools view --output-type v --targets-file $TARGETS ${mpileupfile} > $OUTPUT
+fi
