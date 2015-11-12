@@ -1,0 +1,16 @@
+#!/bin/bash
+
+ARRAYFILE=../metadata/ValidationSamples.csv
+
+for array in 1 2 3 4
+do
+    ids=$( awk "\$1==$array {print \$5}" ${ARRAYFILE} | sed -e 's/"//g' )
+    arraydir=somatic_array_${array}
+    mkdir -p ${arraydir}
+    cd ${arraydir}
+    for id in ${ids}
+    do
+        ln -s ../somatic/${id}*.selected.vcf ${arraydir}
+    done
+    cd ..
+done
