@@ -10,7 +10,7 @@ do
     cd ${arraydir}
     for id in ${ids}
     do
-        ln -s ../somatic/${id}*.selected.vcf ${arraydir}
+        ln -s ../somatic/${id}*.selected.vcf .
     done
     cd ..
 done
