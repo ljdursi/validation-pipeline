@@ -48,7 +48,7 @@ do
             zcat ${fileinflatedbed}.gz > ${fileinflatedbed}
             tabix -p bed ${fileinflatedbed}.gz
 
-            bcftools query -f'%CHROM\t%POS\t%REF,%ALT\n' <( cat ${file} | grep -v 'Callers=smufin;' | sed -e 's/^chr//' ) | bgzip -c > ${base}_targets.gz
+            bcftools query -f'%CHROM\t%POS\t%REF,%ALT\n' <( cat ${file} | sed -e 's/^chr//' ) | bgzip -c > ${base}_targets.gz
             zcat ${base}_targets.gz > ${base}_targets
             tabix -p vcf ${base}_targets.gz
         done
