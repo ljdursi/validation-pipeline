@@ -1,0 +1,24 @@
+#!/bin/bash
+
+echo "Total calls          : " $( cat vcfs/*.snv_mnv.vcf | grep -cv "^#" )
+echo "Total validated calls: " $( cat vcfs/*.snv_mnv.vcf | grep -c "PASS" )
+echo ""
+for caller in adiscan broad_mutect dkfz lohcomplete mda_hgsc_gatk_muse oicr_bl oicr_sga sanger smufin wustl
+do
+    falsepos=$( grep -v PASS vcfs/*.snv_mnv.vcf | grep -c "${caller}" )
+    truepos=$( grep PASS vcfs/*.snv_mnv.vcf | grep -c "${caller}" )
+    falseneg=$( grep PASS vcfs/*.snv_mnv.vcf | grep -vc "${caller}" )
+    sensitivity=$( echo "$truepos / ($truepos + $falseneg)" | bc -l  )
+    precision=$( echo "$truepos / ($truepos + $falsepos)" | bc -l )
+    f1=$( echo "2*$truepos/(2*$truepos + $falsepos + $falseneg)" | bc -l )
+    printf "%s: sensitivity %5.3f  precision %5.3f  F1 %5.3f\n" $caller $sensitivity $precision $f1
+    echo "		private	others	total"
+    for state in PASS NOTSEEN GERMLIN
+    do
+        private=$( grep $state vcfs/*.snv_mnv.vcf | grep -c "Callers=${caller};")
+        total=$( grep $state vcfs/*.snv_mnv.vcf | grep -c "${caller}")
+        other=$(( total - private ))
+        echo "$state		$private	$other	$total"
+    done
+    echo ""
+done
