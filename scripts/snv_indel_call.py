@@ -8,12 +8,11 @@ import vcf
 import sys
 import scipy.stats
 
-def call_from_dp4(dp4, error_rate, prob_threshold, strand_bias):
-    totdepth = sum(dp4)
-    refdepth = sum(dp4[0:2])
-    altdepth = sum(dp4[2:4])
+def call_from_depths(totdepth, evidence, error_rate, prob_threshold, strand_bias):
+    forward, reverse = evidence
+    altdepth = forward+reverse
 
-    if min(dp4[2:3]) < strand_bias*altdepth:
+    if min([forward,reverse]) <= strand_bias*(forward+reverse):
         return False
     
     prob = 1.-scipy.stats.binom.cdf(altdepth, totdepth, error_rate)
@@ -34,13 +33,20 @@ def filter_genotypes():
     vcf_writer = vcf.Writer(args.output, vcf_reader)
 
     for record in vcf_reader:
-        if record.INFO['DP'] < args.mindepth:
+        normal_reads = int(record.INFO['NormalReads'][0])
+        tumour_reads = int(record.INFO['TumourReads'][0])
+        normal_evidence = [int(x) for x in record.INFO['NormalEvidenceReads']]
+        tumour_evidence = [int(x) for x in record.INFO['TumourEvidenceReads']]
+
+        if min(normal_reads, tumour_reads) < args.mindepth:
             continue
 
-        for sample in record.samples:
-            varcall = call_from_dp4(sample.data.DP4, args.error, args.callthreshold, args.strandbias)
-            if varcall and sample.data.GT == '0/0':
-                sample.data = sample.data._replace(GT='0/1')
+        if call_from_depths(normal_reads, normal_evidence, args.error, args.callthreshold, args.strandbias):
+            record.FILTER = ['GERMLINE']
+        elif call_from_depths(tumour_reads, normal_evidence, args.error, args.callthreshold, args.strandbias):
+            record.FILTER = ['PASS']
+        else:
+            record.FILTER = ['PASS']
         vcf_writer.write_record(record)
 
 if __name__ == "__main__":
