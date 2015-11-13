@@ -27,11 +27,11 @@ def main():
     vcf_writer = vcf.Writer(args.output, vcf_reader)
 
     for record in vcf_reader:
-        alt = str(record.ALT[0])
-        record.INFO['NormalReads'] = normal_rc.reads(record.CHROM, record.POS, alt)
-        record.INFO['NormalEvidenceReads'] = ','.join([str(x) for x in normal_rc.evidence_reads(record.CHROM, record.POS, alt)])
-        record.INFO['TumourReads'] = tumour_rc.reads(record.CHROM, record.POS, alt)
-        record.INFO['TumourEvidenceReads'] = ','.join([str(x) for x in tumour_rc.evidence_reads(record.CHROM, record.POS, alt)])
+        chrom, pos, alt = record.CHROM, record.POS, str(record.ALT[0])
+        record.INFO['NormalReads'] = [ normal_rc.reads(chrom, pos, alt) ]
+        record.INFO['NormalEvidenceReads'] = list(normal_rc.evidence_reads(chrom, pos, alt))
+        record.INFO['TumourReads'] = [ tumour_rc.reads(chrom, pos, alt) ]
+        record.INFO['TumourEvidenceReads'] = list(tumour_rc.evidence_reads(chrom, pos, alt))
 
         vcf_writer.write_record(record)
 

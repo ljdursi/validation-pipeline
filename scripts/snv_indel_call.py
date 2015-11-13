@@ -43,10 +43,10 @@ def filter_genotypes():
 
         if call_from_depths(normal_reads, normal_evidence, args.error, args.callthreshold, args.strandbias):
             record.FILTER = ['GERMLINE']
-        elif call_from_depths(tumour_reads, normal_evidence, args.error, args.callthreshold, args.strandbias):
+        elif call_from_depths(tumour_reads, tumour_evidence, args.error, args.callthreshold, args.strandbias):
             record.FILTER = ['PASS']
         else:
-            record.FILTER = ['PASS']
+            record.FILTER = ['NOTSEEN']
         vcf_writer.write_record(record)
 
 if __name__ == "__main__":
