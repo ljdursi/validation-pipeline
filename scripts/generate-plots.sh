@@ -19,8 +19,10 @@ donor=$( echo $donor | cut -f 1 -d \. )
 
 normal=$( grep $donor metadata/sample-directory.txt | awk '{print $2}')
 tumour=$( grep $donor metadata/sample-directory.txt | awk '{print $3}')
+wgsnormal=$( grep $donor metadata/sample_metadata.csv | cut -f 10 -d , )
+wgstumour=$( grep $donor metadata/sample_metadata.csv | cut -f 17 -d , )
 
-if [ -z "$normal" ] || [ -z "$tumour" ]
+if [ -z "$normal" ] || [ -z "$tumour" ] 
 then
     exit
 fi
@@ -30,6 +32,8 @@ new
 genome hg19
 load ../remappedbams/${normal}
 load ../remappedbams/${tumour}
+load ../wgs-bams/${wgsnormal}
+load ../wgs-bams/${wgstumour}
 snapshotDirectory ../plots/${donor}
 EOF
 
