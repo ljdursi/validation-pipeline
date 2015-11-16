@@ -6,17 +6,46 @@ from __future__ import print_function
 import argparse
 import vcf
 import sys
+import numpy
 import scipy.stats
 
-def call_from_depths(totdepth, evidence, error_rate, prob_threshold, strand_bias):
-    forward, reverse = evidence
-    altdepth = forward+reverse
-
-    if min([forward,reverse]) <= strand_bias*(forward+reverse):
-        return False
-    
+def call_from_depths(totdepth, evidence, error_rate, prob_threshold):
+    """
+    Null hypothesis: counts are consistent with a binomial probabilty of error_rate
+                     
+    Returns:    True if we can reject the null phyothesis w/ probability 1-prob_threshold
+                False otherwise
+    """
+    altdepth = sum(evidence)
     prob = 1.-scipy.stats.binom.cdf(altdepth, totdepth, error_rate)
     return prob < prob_threshold
+
+def reject_from_strandbias(totdepth, evidence, strand_bias):
+    forward, reverse = evidence
+    if min([forward,reverse]) <= strand_bias*(forward+reverse):
+        return True
+    return False
+
+def germline_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha):
+    """
+    Null hypothesis: germline results are consistent with being drawn from same
+                     binomial distribution as tumour.
+
+    Returns: True if we cannot reject the null w/ probability 1-alpha
+             False otherwise
+
+    Use binomial proportion test, eg http://itl.nist.gov/div898/software/dataplot/refman1/auxillar/binotest.htm
+    """
+    phat_tumour = sum(t_evidence)*1./t_depth
+    phat_normal = sum(n_evidence)*1./n_depth
+    if phat_normal == 0.:
+        return False
+    phat = sum(t_evidence + n_evidence)*1./(t_depth + n_depth)
+
+    z = (phat_normal-phat_tumour)/numpy.sqrt(phat * (1-phat) * (1./(n_depth+.0001) + 1./(t_depth+.0001)) + 0.0001)
+    if scipy.stats.norm.cdf(z) < alpha:
+        return False
+    return True
 
 
 def filter_genotypes():
@@ -27,6 +56,7 @@ def filter_genotypes():
     parser.add_argument('-t', '--callthreshold', type=float, default=0.02, help='Max prob to call')
     parser.add_argument('-s', '--strandbias', type=float, default=0.10, help='minimum strand ratio')
     parser.add_argument('-m', '--mindepth', type=int, default=10, help='minimum total depth')
+    parser.add_argument('-g', '--germlineprob', type=float, default=0.02, help='Maximum prob of germline')
     args = parser.parse_args()
 
     vcf_reader = vcf.Reader(args.input)
@@ -41,12 +71,15 @@ def filter_genotypes():
         if min(normal_reads, tumour_reads) < args.mindepth:
             continue
 
-        if call_from_depths(normal_reads, normal_evidence, args.error, args.callthreshold, args.strandbias):
-            record.FILTER = ['GERMLINE']
-        elif call_from_depths(tumour_reads, tumour_evidence, args.error, args.callthreshold, args.strandbias):
+        record.FILTER = []
+        if not call_from_depths(tumour_reads, tumour_evidence, args.error, args.callthreshold):
+            record.FILTER += ['NOTSEEN']
+        if reject_from_strandbias(tumour_reads, tumour_evidence, args.strandbias):
+            record.FILTER += ['STRANDBIAS']
+        if not(normal_reads == 0 or tumour_reads == 0) and germline_evidence(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
+            record.FILTER += ['GERMLINE']
+        if len(record.FILTER) == 0:
             record.FILTER = ['PASS']
-        else:
-            record.FILTER = ['NOTSEEN']
         vcf_writer.write_record(record)
 
 if __name__ == "__main__":
