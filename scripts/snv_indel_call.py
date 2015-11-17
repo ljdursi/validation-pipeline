@@ -40,6 +40,8 @@ def germline_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha):
     phat_normal = sum(n_evidence)*1./n_depth
     if phat_normal == 0.:
         return False
+    if phat_normal > .1:
+        return True
     phat = sum(t_evidence + n_evidence)*1./(t_depth + n_depth)
 
     z = (phat_normal-phat_tumour)/numpy.sqrt(phat * (1-phat) * (1./(n_depth+.0001) + 1./(t_depth+.0001)) + 0.0001)
