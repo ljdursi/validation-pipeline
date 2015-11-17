@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir -p vcfs/annotated
+mkdir -p selected-variants/annotated/
 
 while read -r line || [[ -n "$line" ]]; do
     items=(${line//	/ })
@@ -13,12 +13,12 @@ while read -r line || [[ -n "$line" ]]; do
     then
         for vartype in snv_mnv indel
         do
-            if [ -f vcfs/${donor}.${vartype}.vcf ]
+            if [ -f selected-variants/somatic/${donor}.${vartype}.selected.vcf ]
             then
-                qsub -cwd -e logs -o logs -l h_vmem=4g -pe smp 4 \
+                qsub -cwd -e logs -o logs -l h_vmem=4g -pe smp 5 \
                     ./scripts/one-sga-annotate.sh \
                     vcfs/${donor}.${vartype}.vcf remappedbams/${normal} remappedbams/${tumour} \
-                    vcfs/annotated/${donor}.${vartype}.${annotated}.vcf
+                    selected-variants/annotated/${donor}.${vartype}.selected.annotated.vcf
             fi
         done
     fi
