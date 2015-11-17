@@ -26,5 +26,5 @@ REFERENCE=${5-$DEFREF}
 if [ ! -f "$OUTPUT_VCF" ]
 then
     ${SGABIN} somatic-variant-filters --annotate-only -t 4 \
-        --tumor $TUMOR_BAM --normal $NORMAL_BAM --reference $REFERENCE $INPUT_VCF > $OUTPUT_VCF
+        --tumor $TUMOUR_BAM --normal $NORMAL_BAM --reference $REFERENCE $INPUT_VCF > $OUTPUT_VCF
 fi
