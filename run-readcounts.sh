@@ -1,6 +1,7 @@
 #!/bin/bash
 
-READCOUNTDIR=readcounts
+READCOUNTDIR=readcounts/germline-realigned
+BAMDIR=germ-indel-realigned
 mkdir -p $READCOUNTDIR
 
 for file in remappedbams/*.bam

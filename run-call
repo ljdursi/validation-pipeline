@@ -1,4 +1,9 @@
 #!/bin/bash
+READCOUNTSDIR=readcounts/germline-realigned
+VCFDIR=vcfs/germline-realigned
+
+mkdir -p ${VCFDIR}
+
 while read -r line || [[ -n "$line" ]]; do
     items=(${line//	/ })
 
@@ -10,7 +15,7 @@ while read -r line || [[ -n "$line" ]]; do
     do
         qsub -cwd -e logs -o logs -l h_vmem=4g ./scripts/one-call.sh \
             selected-variants/somatic/${donor}.${vartype}.selected.vcf \
-            readcounts/${normal}.${vartype}.rc readcounts/${tumour}.${vartype}.rc \
-            vcfs/${donor}.${vartype}.vcf
+            ${READCOUNTSDIR}/${normal}.${vartype}.rc ${READCOUNTSDIR}/${tumour}.${vartype}.rc \
+            ${VCFDIR}/${donor}.${vartype}.vcf
     done
 done < metadata/sample-directory.txt
