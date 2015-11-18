@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-VCF filter; adjust genotypes based on DP4 (4-depth) scores
+VCF filter; make calls based on supporting depth
 """
 from __future__ import print_function
 import argparse
@@ -21,6 +21,9 @@ def call_from_depths(totdepth, evidence, error_rate, prob_threshold):
     return prob < prob_threshold
 
 def reject_from_strandbias(totdepth, evidence, strand_bias):
+    if len(evidence) == 1:
+        return False  # can't reject; don't have strand information
+
     forward, reverse = evidence
     if min([forward,reverse]) <= strand_bias*(forward+reverse):
         return True
