@@ -11,11 +11,22 @@ import scipy.stats
 import collections
 
 
-def parse_combined(caller_names):
+def parse_combined():
+    snv_callers=['adiscan', 'broad_mutect', 'dkfz', 'lohcomplete', 'mda_hgsc_gatk_muse', 
+                 'oicr_bl', 'oicr_sga', 'sanger', 'smufin', 'wustl']
+    indel_callers=['broad_mutect', 'crg_clindel', 'dkfz', 'novobreak', 'oicr_sga', 
+                   'sanger', 'smufin', 'wustl']
+
     parser = argparse.ArgumentParser( description='Set genotypes based on DP4 scores')
     parser.add_argument('-i', '--input', type=argparse.FileType('r'), default=sys.stdin)
     parser.add_argument('-o', '--output', type=argparse.FileType('w'), default=sys.stdout)
+    parser.add_argument('-t', '--variant_type', type=str, choices=["snv_mnv","indel"], default="snv_mnv")
     args = parser.parse_args()
+
+    if args.variant_type == "indel":
+        caller_names = indel_callers
+    else:
+        caller_names = snv_callers
 
     headerfields = ['chrom', 'pos', 'status', 'ref', 'alt', 'val_tvaf', 'val_nvaf', 'wgs_tvaf', 'wgs_nvaf', 'indel_dist' ]
     headerfields = headerfields + caller_names
@@ -67,7 +78,5 @@ def parse_combined(caller_names):
         print(','.join([itemdict[h] for h in headerfields]), file=args.output)
 
 if __name__ == "__main__":
-    callers=['adiscan', 'broad_mutect', 'dkfz', 'lohcomplete', 'mda_hgsc_gatk_muse', 
-             'oicr_bl', 'oicr_sga', 'sanger', 'smufin', 'wustl']
-    parse_combined(callers)
+    parse_combined()
 
