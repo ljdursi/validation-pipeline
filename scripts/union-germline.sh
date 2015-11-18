@@ -20,7 +20,7 @@ do
     echo '##SAMPLE=<ID=TUMOR,SampleName=tumor_NA,Individual=NA,Description="Tumor">' >> ${vcf}
     echo "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	CONTROL	TUMOR" >> ${vcf}
     zcat ${DIR}/${pair}*vcf.gz \
-        | awk '$1 !~ /^#/ && (length($4) != length($5)) && ($7 ~ /\./ || $7 ~ /PASS/) { chr=$1; if (chr ~/[0-9XY]/) {chr="chr"chr}; printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\tGERMLINE\tGL\t0/1\t0/1\n", $1, $2, $3, $4, $5, $6, $7}'  > tmp.$$
+        | awk '$1 !~ /^#/ && (length($4) != length($5)) && ($7 ~ /\./ || $7 ~ /PASS/) { chr=$1; if (chr ~/[0-9XY]/) {chr="chr"chr}; printf "%s\t%s\t.\t%s\t%s\t%s\t%s\tGERMLINE\tGL\t0/1\t0/1\n", $1, $2, $4, $5, $6, $7}'  > tmp.$$
     grep "^#" tmp.$$ >> ${vcf}
     grep "^[1-9]" tmp.$$ | sort -k1,1n -k2,2n | uniq >> ${vcf}
     grep "^[XY]" tmp.$$ | sort -k1,1 -k2,2n | uniq >> ${vcf}

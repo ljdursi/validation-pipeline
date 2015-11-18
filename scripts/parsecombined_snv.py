@@ -17,7 +17,7 @@ def parse_combined(caller_names):
     parser.add_argument('-o', '--output', type=argparse.FileType('w'), default=sys.stdout)
     args = parser.parse_args()
 
-    headerfields = ['chrom', 'pos', 'status', 'ref', 'alt', 'val_tvaf', 'val_nvaf', 'wgs_tvaf', 'wgs_nvaf' ]
+    headerfields = ['chrom', 'pos', 'status', 'ref', 'alt', 'val_tvaf', 'val_nvaf', 'wgs_tvaf', 'wgs_nvaf', 'indel_dist' ]
     headerfields = headerfields + caller_names
 
     print(','.join(headerfields), file=args.output)
@@ -30,6 +30,7 @@ def parse_combined(caller_names):
         validation_normal_depth, validation_normal_var_depth = None, None
         itemdict['chrom'], itemdict['pos'] = items[0], items[1]
         itemdict['status'], itemdict['ref'], itemdict['alt'] = items[6], items[3], items[4]
+        itemdict['indel_dist'] = "NA"
         if 'GERMLINE' in itemdict['status']:
             itemdict['status'] = 'GERMLINE'
         if 'NOTSEEN' in itemdict['status']:
@@ -46,6 +47,8 @@ def parse_combined(caller_names):
                         itemdict[caller] = '1'
                     else:
                         itemdict[caller] = '0'
+            if key == 'GermIndelDist':
+                itemdict['indel_dist'] = val
             if key == 'NormalVAF':
                 itemdict['wgs_nvaf'] = val
             if key == 'TumorVAF':

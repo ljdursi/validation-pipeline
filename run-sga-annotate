@@ -1,6 +1,9 @@
 #!/bin/bash
 
-mkdir -p selected-variants/annotated/
+#READCOUNTDIR=readcounts/germline-realigned
+READCOUNTDIR=readcounts
+BAMDIR=remappedbams
+#BAMDIR=germ-indel-realigned
 
 while read -r line || [[ -n "$line" ]]; do
     items=(${line//	/ })
@@ -9,16 +12,17 @@ while read -r line || [[ -n "$line" ]]; do
     tumour=${items[2]}
     donor=${items[0]}
 
-    if [ -f remappedbams/${normal} ] && [ -f remappedbams/${tumour} ] 
+    if [ -f ${BAMDIR}/${normal} ] && [ -f ${BAMDIR}/${tumour} ] 
     then
-        for vartype in snv_mnv indel
+        for vartype in indel
         do
             if [ -f selected-variants/somatic/${donor}.${vartype}.selected.vcf ]
             then
                 qsub -cwd -e logs -o logs -l h_vmem=4g -pe smp 5 \
                     ./scripts/one-sga-annotate.sh \
-                    vcfs/${donor}.${vartype}.vcf remappedbams/${normal} remappedbams/${tumour} \
-                    selected-variants/annotated/${donor}.${vartype}.selected.annotated.vcf
+                    selected-variants/somatic/${donor}.${vartype}.selected.vcf \
+                    ${BAMDIR}/${normal} ${BAMDIR}/${tumour} \
+                    ${READCOUNTDIR}/${donor}.${vartype}.vcf
             fi
         done
     fi

@@ -26,5 +26,9 @@ REFERENCE=${5-$DEFREF}
 if [ ! -f "$OUTPUT_VCF" ]
 then
     ${SGABIN} somatic-variant-filters --annotate-only --threads=4 --max-alignments 50000 \
-        --tumor-bam=$TUMOUR_BAM --normal-bam=$NORMAL_BAM --reference=$REFERENCE <( sed -e 's/^chr//' $INPUT_VCF ) > $OUTPUT_VCF
+        --tumor-bam=$TUMOUR_BAM --normal-bam=$NORMAL_BAM --reference=$REFERENCE <( sed -e 's/^chr//' $INPUT_VCF ) \
+        | sed -e 's/TumorVAF=[0-9\.]*;//' -e 's/NormalVAF=[0-9\.]*;//' \
+              -e 's/TumorVarDepth/TumourEvidenceReads/' -e 's/NormalVarDepth/NormalEvidenceReads/' \
+              -e 's/TumorTotalDepth/TumourReads/' -e 's/NormalTotalDepth/NormalReads/' \
+        > $OUTPUT_VCF
 fi
