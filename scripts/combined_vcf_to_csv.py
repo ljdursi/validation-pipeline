@@ -16,24 +16,29 @@ def parse_combined():
                  'oicr_bl', 'oicr_sga', 'sanger', 'smufin', 'wustl']
     indel_callers=['broad_mutect', 'crg_clindel', 'dkfz', 'novobreak', 'oicr_sga', 
                    'sanger', 'smufin', 'wustl']
+    sv_callers=['broad_merged', 'destruct', 'embl_delly', 'novobreak', 'sanger', 'smufin']
 
     parser = argparse.ArgumentParser( description='Set genotypes based on DP4 scores')
     parser.add_argument('-i', '--input', type=argparse.FileType('r'), default=sys.stdin)
     parser.add_argument('-o', '--output', type=argparse.FileType('w'), default=sys.stdout)
-    parser.add_argument('-t', '--variant_type', type=str, choices=["snv_mnv","indel"], default="snv_mnv")
+    parser.add_argument('-t', '--variant_type', type=str, choices=["snv_mnv","indel","sv"], default="snv_mnv")
     args = parser.parse_args()
 
     if args.variant_type == "indel":
         caller_names = indel_callers
-    else:
+    elif args.variant_type == "snv_mnv":
         caller_names = snv_callers
+    else:
+        caller_names = sv_callers
 
-    headerfields = ['chrom', 'pos', 'status', 'ref', 'alt', 'val_tvaf', 'val_nvaf', 'wgs_tvaf', 'wgs_nvaf', 'repeat_count', 'indel_dist' ]
+    headerfields = ['chrom', 'pos', 'status', 'ref', 'alt', 'val_tvaf', 'val_nvaf', 'wgs_tvaf', 'wgs_nvaf', 'repeat_count', 'varlen', 'indel_dist' ]
     headerfields = headerfields + caller_names
 
     print(','.join(headerfields), file=args.output)
 
     for line in args.input:
+        if line[0] == '#':
+            continue
         itemdict = collections.defaultdict(str)
         items = line.split()
         callers_found = False
@@ -58,6 +63,8 @@ def parse_combined():
                         itemdict[caller] = '1'
                     else:
                         itemdict[caller] = '0'
+            if key == 'RepeatRefCount':
+                itemdict['repeat_count'] = val
             if key == 'RepeatRefCount':
                 itemdict['repeat_count'] = val
             if key == 'GermIndelDist':

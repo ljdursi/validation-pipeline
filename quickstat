@@ -11,6 +11,9 @@ then
 elif [ "$TYPE" == "indel" ]
 then
     callers="broad_mutect crg_clindel dkfz novobreak oicr_sga sanger smufin wustl"
+elif [ "$TYPE" == "sv" ]
+then
+    callers="broad_merged destruct embl_delly novobreak sanger smufin"
 fi
 
 echo "Total calls          : " $( cat ${VCFDIR}/*.${TYPE}.vcf | grep -cv "^#" )
