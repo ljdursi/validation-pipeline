@@ -7,6 +7,11 @@ import vcf
 import argparse
 import sys
 
+MAX_DISTANCE=1000000000
+WINDOW=300
+CLIP_WINDOW=5
+
+
 # returns the reference positions at which the read is softclipped
 def get_softclip_positions(read):
     out = list()
@@ -98,41 +103,41 @@ def count_paired_reads_for_breakends(bam_fh, record):
     return pe_evidence_count, total_pairs_count
 
 # Main
-parser = argparse.ArgumentParser(description='Validate somatic SV calls against normal/tumor BAMs')
-parser.add_argument('vcffile', help='Name of vcf file to validate')
-parser.add_argument('normal_bam', help='Name of normal bam file')
-parser.add_argument('tumour_bam', help='Name of tumour bam file')
-parser.add_argument('-o', '--output', type=argparse.FileType('w'), default=sys.stdout, 
-                        help='Output VCF (default: stdout)')
-args = parser.parse_args()
+def main():
+    parser = argparse.ArgumentParser(description='Validate somatic SV calls against normal/tumor BAMs')
+    parser.add_argument('vcffile', help='Name of vcf file to validate')
+    parser.add_argument('normal_bam', help='Name of normal bam file')
+    parser.add_argument('tumour_bam', help='Name of tumour bam file')
+    parser.add_argument('-o', '--output', type=argparse.FileType('w'), default=sys.stdout, 
+                            help='Output VCF (default: stdout)')
+    args = parser.parse_args()
 
-normal_bam_fh = pysam.AlignmentFile(args.normal_bam, 'rb')
-tumour_bam_fh = pysam.AlignmentFile(args.tumour_bam, 'rb')
-vcf_reader = vcf.Reader(open(args.vcffile))
+    normal_bam_fh = pysam.AlignmentFile(args.normal_bam, 'rb')
+    tumour_bam_fh = pysam.AlignmentFile(args.tumour_bam, 'rb')
+    vcf_reader = vcf.Reader(open(args.vcffile))
 
-bam_fh_list = [ normal_bam_fh, tumour_bam_fh ]
-name_list = [ "Normal", "Tumour" ]
+    bam_fh_list = [ normal_bam_fh, tumour_bam_fh ]
+    name_list = [ "Normal", "Tumour" ]
 
-# constants
-MAX_DISTANCE=1000000000
-WINDOW=300
-CLIP_WINDOW=5
+    # constants
+    vcf_out_fh = vcf.Writer(args.output, vcf_reader)
 
-vcf_out_fh = vcf.Writer(args.output, vcf_reader)
+    for record in vcf_reader:
 
-for record in vcf_reader:
+        # Iterate over the reads mapped to the first half of the breakend
+        for bam_fh, name in zip(bam_fh_list, name_list):
+            spanned_evidence_count, total_pair_count = count_paired_reads_for_breakends(bam_fh, record)
+            bp_1_reads = count_clipped_reads_at_breakpoint(bam_fh, record.CHROM, record.POS)
+            bp_2_reads = count_clipped_reads_at_breakpoint(bam_fh, record.ALT[0].chr, record.ALT[0].pos)
 
-    # Iterate over the reads mapped to the first half of the breakend
-    for bam_fh, name in zip(bam_fh_list, name_list):
-        spanned_evidence_count, total_pair_count = count_paired_reads_for_breakends(bam_fh, record)
-        bp_1_reads = count_clipped_reads_at_breakpoint(bam_fh, record.CHROM, record.POS)
-        bp_2_reads = count_clipped_reads_at_breakpoint(bam_fh, record.ALT[0].chr, record.ALT[0].pos)
+            record.INFO[name + 'EvidenceReads'] = spanned_evidence_count
+            record.INFO[name + 'Reads'] = total_pair_count
+            record.INFO[name + 'Bp1ClipEvidence'] = bp_1_reads
+            record.INFO[name + 'Bp2ClipEvidence'] = bp_2_reads
 
-        record.INFO[name + 'EvidencePairs'] = spanned_evidence_count
-        record.INFO[name + 'TotalPairs'] = total_pair_count
-        record.INFO[name + 'Bp1ClipEvidence'] = bp_1_reads
-        record.INFO[name + 'Bp2ClipEvidence'] = bp_2_reads
+        # pysam puts an empty key if there is a single INFO tag ending in a delimiter. get rid of it
+        del record.INFO['']
+        vcf_out_fh.write_record(record)
 
-    # pysam puts an empty key if there is a single INFO tag ending in a delimiter. get rid of it
-    del record.INFO['']
-    vcf_out_fh.write_record(record)
+if __name__ == "__main__":
+    main()
