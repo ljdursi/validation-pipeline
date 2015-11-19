@@ -28,7 +28,7 @@ def parse_combined():
     else:
         caller_names = snv_callers
 
-    headerfields = ['chrom', 'pos', 'status', 'ref', 'alt', 'val_tvaf', 'val_nvaf', 'wgs_tvaf', 'wgs_nvaf', 'indel_dist' ]
+    headerfields = ['chrom', 'pos', 'status', 'ref', 'alt', 'val_tvaf', 'val_nvaf', 'wgs_tvaf', 'wgs_nvaf', 'repeat_count', 'indel_dist' ]
     headerfields = headerfields + caller_names
 
     print(','.join(headerfields), file=args.output)
@@ -58,6 +58,8 @@ def parse_combined():
                         itemdict[caller] = '1'
                     else:
                         itemdict[caller] = '0'
+            if key == 'RepeatRefCount':
+                itemdict['repeat_count'] = val
             if key == 'GermIndelDist':
                 itemdict['indel_dist'] = val
             if key == 'NormalVAF':
