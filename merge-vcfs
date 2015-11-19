@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# Merges the calls from the validation data with the original 
+# WGS master VCFS, to produce a result that has both the validation
+# result and the annotations for the WGS data
+#
+# The bad news is that it has the Callers= info field in twice,
+# but parsers seem to be able to handle this
+
+# input VCF DIR
+# can be overridden at commandline, eg VCFDIR=vcfs ./run-call.sh
+DEFVCFDIR=vcfs/germline-realigned
+# output dir
+DEFOUTDIR=combined/germline-realigned
+# directory for original master vcfs
+DEFWGSDIR=../validation_63_sftp_mirror/masked_repeats/somatic/
+
+VCFDIR=${VCFDIR-${DEFVCFDIR}}
+OUTDIR=${OUTDIR-${DEFOUTDIR}}
+WGSDIR=${WGSDIR-${DEFWGSDIR}}
+
+echo "input directory:  ${VCFDIR}"
+echo "output directory: ${OUTDIR}"
+echo "wgs directory:    ${WGSDIR}"
+
+for file in ${VCFDIR}/*.vcf
+do
+    base=$( basename $file .vcf )
+    donor=$( basename $base .snv_mnv )
+    donor=$( basename $donor .indel )
+    donor=$( basename $donor .sv )
+    masterfile=${WGSDIR}/${base}.master.vcf
+    if [ -f $masterfile ] 
+    then
+        echo "${file}:"
+        ./scripts/add-germline-indel-dist-info.sh ${file} germline-calls/union/${donor}.vcf |\
+            ./scripts/merge-validation-selection.sh - ${masterfile} > ${OUTDIR}/${base}.vcf
+    fi
+done 
