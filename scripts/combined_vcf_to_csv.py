@@ -1,16 +1,28 @@
 #!/usr/bin/env python
 """
-VCF filter; adjust genotypes based on DP4 (4-depth) scores
+Take combined VCF files and translate them to CSV for analysis
 """
 from __future__ import print_function
 import argparse
-import vcf
 import sys
-import numpy
-import scipy.stats
 import collections
 from os import listdir
-from os.path import isfile, join, splitext
+from os.path import isfile, isdir, basename
+
+def build_filelist(filenames, match):
+    """ If given a directory, descend into directory and generate 
+        list of files that match "match" (but do not descend into subdirectories)."""
+    file_list = []
+    for filename in filenames:
+        if isfile(filename) and filename.find(match) != -1:
+            file_list.append(filename)
+        elif isdir(filename):
+            for f in listdir(filename):
+                pathname = os.path.join(filename, f)
+                if isfile(pathname) and filename.find(match) != -1:
+                    file_list.append(pathname)
+    return file_list
+
 
 def parse_combined():
     snv_callers=['adiscan', 'broad_mutect', 'dkfz', 'lohcomplete', 'mda_hgsc_gatk_muse', 
@@ -20,7 +32,7 @@ def parse_combined():
     sv_callers=['broad_merged', 'destruct', 'embl_delly', 'novobreak', 'sanger', 'smufin']
 
     parser = argparse.ArgumentParser( description='Set genotypes based on DP4 scores')
-    parser.add_argument('directory')
+    parser.add_argument('inputs', nargs="+")
     parser.add_argument('-o', '--output', type=argparse.FileType('w'), default=sys.stdout)
     parser.add_argument('-t', '--variant_type', type=str, choices=["snv_mnv","indel","sv"], default="snv_mnv")
     args = parser.parse_args()
@@ -37,11 +49,12 @@ def parse_combined():
     print(','.join(headerfields), file=args.output)
 
     # Get all of the files in the directory for this variant type
-    files = [ f for f in listdir(args.directory) if isfile(args.directory + "/" + f) and f.find(args.variant_type) != -1 ]
+    files = build_filelist(args.inputs, args.variant_type)
 
     for f in files:
-        sample_id = f.split(".")[0]
-        for line in open(args.directory + "/" + f):
+        sample_id = basename(f).split(".")[0]
+        #for line in open(args.directory + "/" + f):
+        for line in open(f, 'r'):
             if line[0] == '#':
                 continue
             itemdict = collections.defaultdict(str)
@@ -87,9 +100,11 @@ def parse_combined():
                     validation_tumour_var_depth = sum([int(x) for x in val.split(',')])
                 if key == 'TumourReads':
                     validation_tumour_depth = int(val)
-                    
-            itemdict['val_tvaf'] = str(1.0*validation_tumour_var_depth/(validation_tumour_depth+0.00001))
-            itemdict['val_nvaf'] = str(1.0*validation_normal_var_depth/(validation_normal_depth+0.00001))
+            
+            if not validation_tumour_var_depth is None and not validation_tumour_depth is None:
+                itemdict['val_tvaf'] = str(1.0*validation_tumour_var_depth/(validation_tumour_depth+0.00001))
+            if not validation_normal_var_depth is None and not validation_normal_depth is None:
+                itemdict['val_nvaf'] = str(1.0*validation_normal_var_depth/(validation_normal_depth+0.00001))
             print(','.join([itemdict[h] for h in headerfields]), file=args.output)
 
 if __name__ == "__main__":
