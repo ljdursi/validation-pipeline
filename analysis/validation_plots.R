@@ -41,11 +41,6 @@ count_total_calls_for_caller <- function(data, caller) {
     return(sum(data[caller]))
 }
 
-# Get the list of pipelines that made calls on this dataset
-get_callers <- function(data) {
-
-}
-
 # Calculate per-caller sensitivity and precision and return as a data.frame
 calculate_sensitivity_precision_by_caller <- function(caller_list, data) {
 
