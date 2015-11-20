@@ -4,6 +4,7 @@
 snv_callers <- c("adiscan", "broad_mutect", "dkfz", "lohcomplete", "mda_hgsc_gatk_muse", "oicr_bl", "oicr_sga", "sanger", "smufin", "wustl")
 indel_callers <- c("broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga", "sanger", "smufin", "wustl")
 sv_callers <- c("broad_merged", "destruct", "embl_delly", "novobreak", "sanger", "smufin")
+
 #
 # Functions
 #
@@ -46,29 +47,29 @@ get_callers <- function(data) {
 }
 
 # Calculate per-caller sensitivity and precision and return as a data.frame
-calculate_sensitivity_precision_by_caller <- function(caller, data) {
+calculate_sensitivity_precision_by_caller <- function(caller_list, data) {
 
     sensitivity <- vector()
     precision <- vector()
 
     total_true = count_true_positive(data)
 
-    for(c in caller) {
+    for(c in caller_list) {
         tp_caller <- count_true_positive_for_caller(data, c)
         total_caller <- count_total_calls_for_caller(data, c)
         sensitivity <- c(sensitivity, tp_caller / total_true)
         precision <- c(precision, tp_caller / total_caller)
     }
-    return(data.frame(caller, sensitivity, precision))
+    return(data.frame(caller=caller_list, sensitivity, precision))
 }
 
 # Calculate per-caller, per-sample sensitivity and precision
-calculate_sensitivity_precision_by_caller_by_sample <- function(caller, data) {
+calculate_sensitivity_precision_by_caller_by_sample <- function(caller_list, data) {
     new_df <- ddply(data, 
                    "sample", 
                    .fun = function(x, input_callers) 
                         calculate_sensitivity_precision_by_caller(input_callers, x), 
-                    input_callers=caller)
+                    input_callers=caller_list)
     return(new_df)
 }
 
@@ -76,11 +77,11 @@ plot_sensitivity_precision <- function(data) {
     ggplot(data, aes(precision, sensitivity, label=caller)) + geom_point() + geom_text(hjust=0, vjust=0, size=6, angle=35) + xlim(0,1) + ylim(0,1)
 }
 
-plot_status_stacked_bar <- function(callers, data, out_filename) {
+plot_status_stacked_bar <- function(caller_list, data, out_filename) {
 
     df <- data.frame(caller=character(), status=integer(), freq=integer())
 
-    for(c in callers) {
+    for(c in caller_list) {
         sub <- data[data[c] == 1,]
         c_df <- count(sub, "status")
         c_df$caller = c
@@ -92,7 +93,7 @@ plot_status_stacked_bar <- function(callers, data, out_filename) {
     ggsave(out_filename, width = 10, height = 10)
 }
 
-plot_sens_by_vaf <- function(callers, data, out_filename) {
+plot_sens_by_vaf <- function(caller_list, data, out_filename) {
     df <- data.frame(val_tvaf_bin = integer(),
                      caller = character(),
                      total_validated_true = integer(),
@@ -100,9 +101,8 @@ plot_sens_by_vaf <- function(callers, data, out_filename) {
 
     # subset calls to just those that PASS
     passed <- subset(data, status == "PASS")
-    print(df)
 
-    for(c in callers) {
+    for(c in caller_list) {
         c_df <- ddply(snv_pass, "val_tvaf_bin", 
                   .fun = function(x, colname) 
                       summarize(x, total_validated_true = length(x[,colname]), caller_validated_true = sum(x[,colname])), 
