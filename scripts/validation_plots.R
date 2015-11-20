@@ -3,7 +3,7 @@
 #
 snv_callers <- c("adiscan", "broad_mutect", "dkfz", "lohcomplete", "mda_hgsc_gatk_muse", "oicr_bl", "oicr_sga", "sanger", "smufin", "wustl")
 indel_callers <- c("broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga", "sanger", "smufin", "wustl")
-
+sv_callers <- c("broad_merged", "destruct", "embl_delly", "novobreak", "sanger", "smufin")
 #
 # Functions
 #
@@ -46,7 +46,7 @@ get_callers <- function(data) {
 }
 
 # Calculate per-caller sensitivity and precision and return as a data.frame
-calculate_sensitivity_precision_by_caller <- function(data) {
+calculate_sensitivity_precision_by_caller <- function(caller, data) {
 
     sensitivity <- vector()
     precision <- vector()
@@ -60,6 +60,16 @@ calculate_sensitivity_precision_by_caller <- function(data) {
         precision <- c(precision, tp_caller / total_caller)
     }
     return(data.frame(caller, sensitivity, precision))
+}
+
+# Calculate per-caller, per-sample sensitivity and precision
+calculate_sensitivity_precision_by_caller_by_sample <- function(caller, data) {
+    new_df <- ddply(data, 
+                   "sample", 
+                   .fun = function(x, input_callers) 
+                        calculate_sensitivity_precision_by_caller(input_callers, x), 
+                    input_callers=caller)
+    return(new_df)
 }
 
 plot_sensitivity_precision <- function(data) {
