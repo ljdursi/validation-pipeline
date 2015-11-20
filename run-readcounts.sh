@@ -1,14 +1,15 @@
 #!/bin/bash
 
-READCOUNTDIR=readcounts
+READCOUNTDIR=readcounts/germline-realigned
+BAMDIR=germ-indel-realigned
 mkdir -p $READCOUNTDIR
 
-for file in remappedbams/*.bam
+for file in ${BAMDIR}/*.bam
 do
     base=$( basename $file .bam )
     donor=$( grep $base metadata/sample-directory.txt | awk '{print $1}' )
 
-    for vartype in snv_mnv indel
+    for vartype in snv_mnv 
     do
         qsub -cwd -e logs -o logs -l h_vmem=4g ./scripts/one-readcount.sh $file beds/bysample/${donor}.${vartype}.bed ${READCOUNTDIR}/${base}.${vartype}.rc
     done

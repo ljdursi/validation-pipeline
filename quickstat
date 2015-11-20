@@ -1,22 +1,39 @@
 #!/bin/bash
 
-echo "Total calls          : " $( cat vcfs/*.snv_mnv.vcf | grep -cv "^#" )
-echo "Total validated calls: " $( cat vcfs/*.snv_mnv.vcf | grep -c "PASS" )
+DEFVCFDIR=vcfs/germline-realigned
+DEFTYPE=snv_mnv
+VCFDIR=${VCFDIR-$DEFVCFDIR}
+TYPE=${TYPE-$DEFTYPE}
+
+if [ "$TYPE" == "snv_mnv" ]
+then
+    callers="adiscan broad_mutect dkfz lohcomplete mda_hgsc_gatk_muse oicr_bl oicr_sga sanger smufin wustl"
+elif [ "$TYPE" == "indel" ]
+then
+    callers="broad_mutect crg_clindel dkfz novobreak oicr_sga sanger smufin wustl"
+elif [ "$TYPE" == "sv" ]
+then
+    callers="broad_merged destruct embl_delly novobreak sanger smufin"
+fi
+
+echo "Total calls          : " $( cat ${VCFDIR}/*.${TYPE}.vcf | grep -cv "^#" )
+echo "Total validated calls: " $( cat ${VCFDIR}/*.${TYPE}.vcf | grep -c "PASS" )
 echo ""
-for caller in adiscan broad_mutect dkfz lohcomplete mda_hgsc_gatk_muse oicr_bl oicr_sga sanger smufin wustl
+for caller in ${callers}
 do
-    falsepos=$( grep -v PASS vcfs/*.snv_mnv.vcf | grep -c "${caller}" )
-    truepos=$( grep PASS vcfs/*.snv_mnv.vcf | grep -c "${caller}" )
-    falseneg=$( grep PASS vcfs/*.snv_mnv.vcf | grep -vc "${caller}" )
+    falsepos=$( grep -v PASS ${VCFDIR}/*.${TYPE}.vcf | grep -c "${caller}" )
+    truepos=$( grep PASS ${VCFDIR}/*.${TYPE}.vcf | grep -c "${caller}" )
+    falseneg=$( grep PASS ${VCFDIR}/*.${TYPE}.vcf | grep -vc "${caller}" )
+    npos=$(( falsepos + truepos ))
     sensitivity=$( echo "$truepos / ($truepos + $falseneg)" | bc -l  )
     precision=$( echo "$truepos / ($truepos + $falsepos)" | bc -l )
     f1=$( echo "2*$truepos/(2*$truepos + $falsepos + $falseneg)" | bc -l )
-    printf "%s: sensitivity %5.3f  precision %5.3f  F1 %5.3f\n" $caller $sensitivity $precision $f1
+    printf "%s: ncalls %5.3f  npass %5.3f  sensitivity %5.3f  precision %5.3f  F1 %5.3f\n" $caller $npos $truepos $sensitivity $precision $f1
     echo "		private	others	total"
-    for state in PASS NOTSEEN GERMLIN
+    for state in PASS NOTSEEN GERMLIN STRANDB
     do
-        private=$( grep $state vcfs/*.snv_mnv.vcf | grep -c "Callers=${caller};")
-        total=$( grep $state vcfs/*.snv_mnv.vcf | grep -c "${caller}")
+        private=$( grep $state ${VCFDIR}/*.${TYPE}.vcf | grep -c "Callers=${caller};")
+        total=$( grep $state ${VCFDIR}/*.${TYPE}.vcf | grep -c "${caller}")
         other=$(( total - private ))
         echo "$state		$private	$other	$total"
     done

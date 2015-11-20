@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-VCF filter; adjust genotypes based on DP4 (4-depth) scores
+VCF filter; make calls based on supporting depth
 """
 from __future__ import print_function
 import argparse
@@ -21,6 +21,9 @@ def call_from_depths(totdepth, evidence, error_rate, prob_threshold):
     return prob < prob_threshold
 
 def reject_from_strandbias(totdepth, evidence, strand_bias):
+    if len(evidence) == 1:
+        return False  # can't reject; don't have strand information
+
     forward, reverse = evidence
     if min([forward,reverse]) <= strand_bias*(forward+reverse):
         return True
@@ -40,6 +43,8 @@ def germline_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha):
     phat_normal = sum(n_evidence)*1./n_depth
     if phat_normal == 0.:
         return False
+    if phat_normal > .1:
+        return True
     phat = sum(t_evidence + n_evidence)*1./(t_depth + n_depth)
 
     z = (phat_normal-phat_tumour)/numpy.sqrt(phat * (1-phat) * (1./(n_depth+.0001) + 1./(t_depth+.0001)) + 0.0001)
