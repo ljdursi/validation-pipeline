@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 #
 # realigns the FASTQ files that are in directory FASTQDIR
 # (eg, bams/sample-id/*.fastq) into individual BAMs using
@@ -16,14 +16,16 @@ DEFREF=/oicr/data/pancanxfer/validation/reference/bwa-0.6.2/genome.fa.gz
 if [ $# -eq 0 ] || [ -z "$1" ] || [ -z "$2" ]
 then
     echo "$0 - Aligns FASTQ files"
-    echo "Usage: $0 fastqdir bamdir [njobs=8] [ref=$DEFREF]"
+    echo "Usage: $0 fastqdir output.bam [njobs=8] [ref=$DEFREF]"
     exit 
 fi
 
 FASTQDIR=$1
 OUTPUTBAM=$2
-JOBS=${3-8}
+JOBS=${3-4}
 REFERENCE=${4-$DEFREF}
+
+HEADERFILE=${FASTQDIR}/bam-header.txt
 
 ##
 ## BWA MEM align a particular FASTQ pair
@@ -35,50 +37,46 @@ function bwamem {
     pair1=$3
     pair2=$4
     outbam=$5
+
     module load bwa/0.7.12
+    >&2 echo "invocation is: rg=$1, ref=$2 p1=$3, p2=$4, outbam=$5"
+    >&2 echo "bwa mem -T 0 -R _${rg}_ $reference $pair1 $pair2 | samtools view -bS - > ${outbam}"
     bwa mem -T 0 -R "${rg}" $reference $pair1 $pair2 | samtools view -bS - > ${outbam}
 }
 
+function call_bwamem {
+    firstfastq=$1
+    headerfile=$2
+    bamdir=$3
+    reference=$4
+
+    pair=${firstfastq//.gz/}
+    pair=${pair//_1.fastq/}
+    base=$( basename $pair )
+
+    rg=$( grep $base $headerfile )
+
+    >&2 echo "invocation is: ffq=$1, header=$2 bamdir=$3, ref=$4"
+    >&2 echo "bwamem _${rg}_ $reference ${pair}_1.fastq* ${pair}_2.fastq* ${bamdir}/${base}.bam"
+    bwamem "$rg" $reference ${pair}_1.fastq* ${pair}_2.fastq* ${bamdir}/${base}.bam
+}   
+
 export -f bwamem
+export -f call_bwamem
 
-SAMPLEBASEDIR=$1
-FASTQDIR=$2
-BAMDIR=$3
-REFERENCE=$4
-
-HEADERFILE=${FASTQDIR}/bam-header.txt
-
-if [ "$FASTQDIR" != "$SAMPLEBASEDIR" ]
+if [ ! -f "${OUTPUTBAM}" ]
 then
-    BAMSUBDIR=${BAMDIR}/${SAMPLEBASEDIR#$FASTQDIR}
+    SUBBAMS_DIR=${OUTPUTBAM%%.bam}
+    mkdir -p ${SUBBAMS_DIR}
 
-    HEADERFILE=${SAMPLEBASEDIR}/bam-header.txt
-    if [ ! -d ${BAMSUBDIR} ]
-    then
-        mkdir -p ${BAMSUBDIR}
-    fi    
+    ls ${FASTQDIR}/*_1.fastq* | parallel -j $JOBS call_bwamem {} ${HEADERFILE} ${SUBBAMS_DIR} ${REFERENCE}
 
-    for pair1 in ${SAMPLEBASEDIR}/*_1.fastq*
-    do
-        pair2=${pair1/_1/_2}
-        stripgz=${pair1%.gz}
-        base=${stripgz%_1.fastq}
-        base=$(basename $base)
-
-        if [ ! -f ${BAMSUBDIR}/${base}.bam ]
-        then
-            rg=$( grep $base $HEADERFILE )
-            echo "bwamem \"$rg\" $REFERENCE $pair1 $pair2 ${BAMSUBDIR}/${base}.bam "
-            bwamem "$rg" $REFERENCE $pair1 $pair2 ${BAMSUBDIR}/${base}.bam 
-        fi
-
-    done
     module load picard/1.92
-    mem=4g
-    inputs=$( ls ${BAMSUBDIR}/*.bam | xargs -n1 -I{} echo "INPUT="{} )
+    mem=8g
+    inputs=$( ls ${SUBBAMS_DIR}/*.bam | xargs -n1 -I{} echo "INPUT="{} )
     java -Xmx${mem} -Xms${mem} -jar ${PICARDROOT}/MergeSamFiles.jar \
-            $inputs OUTPUT=${BAMSUBDIR}.bam VALIDATION_STRINGENCY=LENIENT MERGE_SEQUENCE_DICTIONARIES=true
+            $inputs OUTPUT=${OUTPUTBAM} VALIDATION_STRINGENCY=LENIENT MERGE_SEQUENCE_DICTIONARIES=true
 
     module load samtools/0.1.19
-    samtools index ${BAMSUBDIR}.bam
+    samtools index ${OUTPUTBAM}
 fi

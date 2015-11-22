@@ -1,0 +1,29 @@
+#!/bin/bash
+
+input_bams=$( find ingest-bams -name "*.bam" )
+
+FASTQDIR=fastqs
+REMAPPEDDIR=remappedbams
+INDELREALIGNEDDIR=germ-indel-realigned
+
+for input_bam in ${input_bams}
+do
+    bamname=$( basename $input_bam )
+    base=${bamname//.bam/}
+
+    if [ ! -d ${FASTQDIR}/${base} ]
+    then
+        qsub -cwd -e logs -o logs -l h_vmem=8g -N fastqs${base} \
+            ./scripts/one_bam_to_fastq.sh ${input_bam} ${FASTQDIR}
+    fi
+
+    if [ ! -f ${REMAPPEDDIR}/${bamname} ]
+    then
+        qsub -cwd -e logs -o logs -l h_vmem=8g -N bwamem${base} \
+            -hold_jid fastqs${base} \
+            -pe smp 4 -l h_vmem=8g \
+            ./scripts/one_realign_fastqs.sh \
+                ${FASTQDIR}/${base} \
+                ${REMAPPEDDIR}/${bamname}
+    fi
+done
