@@ -1,8 +1,26 @@
-snv_callers <- c("adiscan", "broad_mutect", "dkfz", "lohcomplete", "mda_hgsc_gatk_muse", "oicr_bl", "oicr_sga", "sanger", "smufin", "wustl")
-indel_callers <- c("broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga", "sanger", "smufin", "wustl")
-sv_callers <- c("broad_merged", "destruct", "embl_delly", "novobreak", "sanger", "smufin")
+derived <- c("union", "intersect2", "intersect3")
 
-csv_data <- function(filename, callers) {
+snv_callers <- c("adiscan", "broad_mutect", "dkfz", "lohcomplete", "mda_hgsc_gatk_muse", "oicr_bl", "oicr_sga", "sanger", "smufin", "wustl")
+snv_callers_plus_derived <- c(snv_callers, derived)
+snv_derived <- c(rep(FALSE, length(snv_callers)), rep(TRUE, length(derived)))
+indel_callers <- c("broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga", "sanger", "smufin", "wustl")
+indel_callers_plus_derived <- c(indel_callers, derived)
+indel_derived <- c(rep(FALSE, length(indel_callers)), rep(TRUE, length(derived)))
+sv_callers <- c("broad_merged", "destruct", "embl_delly", "novobreak", "sanger", "smufin")
+sv_callers_plus_derived <- c(snv_callers, derived)
+sv_derived <- c(rep(FALSE, length(sv_callers)), rep(TRUE, length(derived)))
+
+core_callers_formula <- "validate_true ~ broad_mutect + dkfz + sanger + wgs_tvaf + wgs_nvaf"
+
+#
+# load in a CSV, and add useful columns such as:
+#  - concordance
+#  - 'seenby_' columns for each caller
+#  - common_sample - if seen by all callers
+#  - union/intersect2/intersect3 : derived callers from the core pipelines
+#  - binned values for some continuous featuers: wgs_tvaf, homopolymer count, indel size
+#
+load_csv <- function(filename, callers) {
   data <- read.csv(filename)
 
   caller_columns <- sapply(callers, function(x) grep(x, names(data)))
@@ -18,16 +36,20 @@ csv_data <- function(filename, callers) {
   core_callers <- as.vector(na.omit(c(grep("broad",col_names), match("dkfz",col_names), match("embl_delly", col_names), match("sanger",col_names))))
   ncore <- rowSums(data[,core_callers])
   
+  data$common_sample <- 0
   for (caller in callers) {
     t <- tapply(data[[caller]], data$sample, FUN=sum)
     missed.samples <- dimnames(t)[[1]][t==0]
     seen <- paste0("seenby_",caller)
     data[[seen]] <- 1
     data[[seen]][data$sample %in% missed.samples] <- 0
+    data$common_sample <- data$common_sample + data[[seen]]
   }
   col_names <- names(data)
   seenby_core_callers <- as.vector(na.omit(c(grep("seenby_broad",col_names), match("seenby_dkfz",col_names), match("seenby_embl_delly", col_names), match("seenby_sanger",col_names))))
   ncore_seenby <- rowSums(data[,seenby_core_callers])
+  
+  data$common_sample <- data$common_sample == length(callers)
   
   data$union <- ifelse( ncore > 0, 1, 0)
   data$intersect2 <- ifelse( ncore > 1, 1, 0)
@@ -41,7 +63,10 @@ csv_data <- function(filename, callers) {
   return(data)
 }
 
-accuracies <- function(validate_true, calls) {
+#
+# raw accuracies, not taking into account the selection procedure
+#
+rawaccuracies <- function(validate_true, calls) {
   ntruepos = sum(validate_true==TRUE & calls==1)
   nfalsepos = sum(validate_true==FALSE & calls==1)
   nfalseneg = sum(validate_true==TRUE & calls==0)
@@ -51,7 +76,7 @@ accuracies <- function(validate_true, calls) {
   return(list(sensitivity=sensitivity, precision=precision, f1=f1))
 }
 
-accuracies_by_var <- function(data, caller, variable=NULL) {
+rawaccuracies_by_var <- function(data, caller, variable=NULL) {
   seenby_caller <- paste0("seenby_",caller)
   if (seenby_caller %in% names(data))
     seendata <- data[data[[seenby_caller]]==1,]
@@ -84,7 +109,7 @@ accuracies_by_var <- function(data, caller, variable=NULL) {
   return(df)
 }
 
-caller_sensitivities <- function(data, callers, variable="binned_wgs_tvaf") {
+raw_caller_sensitivities <- function(data, callers, variable="binned_wgs_tvaf") {
   do.call(rbind, lapply(callers, function(x) accuracies_by_var(data, x, variable)))
 }
 
@@ -109,6 +134,7 @@ rfROC <- function(data, model) {
   prediction <- as.vector(prediction[,2])
   vals <- (10:95)/100
   results <- sapply(vals, function(x) accuracies(data$validate_true, prediction > x))
+  df <- data.frame(t(matrix(unlist(results),ncol=length(vals))))
   colnames(df) <- c("sensitivity", "precision", "f1")
   df <- df[,1:3]
   df$thresh <- vals
@@ -126,8 +152,9 @@ const.f1.rocs <- function(f1s) {
 }
 
 library(party)
-rocplot <- function(data, formulae, names, callers, derived, title) {
-  s <- caller_sensitivities(data, callers, NULL)
+library(ggplot2)
+rocplot <- function(data, allcalls, formulae, names, callers, derived, title) {
+  s <- corrected.accuracies(data, allcalls, callers)
   s$derived <- derived
   
   allmodels <- data.frame()
@@ -139,7 +166,7 @@ rocplot <- function(data, formulae, names, callers, derived, title) {
     treemodel <- ctree(as.formula(formulae[i]), data=train)
     results <- modelROC(test, treemodel)
     results$model <- names[i]
-    results$type <- "tree"
+    results$type <- "decision tree"
     
     allmodels <- rbind(allmodels, results)
     
@@ -189,86 +216,55 @@ estimated.num.mutations <- function(selected.call.data, all.call.data, samplenam
   return(as.integer(sum(total.calls.by.concordance*truefrac.by.concordance)))
 }
 
-table.to.vect <- function(values, maxcols=12) {
-  vect <- rep(0, maxcols)
-  t <- table(values)
-  vect[as.integer(names(t))] <- t
-  return(vect)
-}
-
-corrected.accuracies.per.sample <- function(selected.call.data, all.call.data, callername, samplename) {
+corrected.accuracies.by.caller <- function(validated.call.data, all.call.data, caller) {
   verbose <- FALSE
-  selected.calls <- selected.call.data[selected.call.data$sample==samplename, ]
-  all.calls <- all.call.data[all.call.data$sample==samplename,]
+  validated.calls <- subset(validated.call.data, common_sample)
+  validated.calls$concordance <- factor(validated.calls$concordance)
+  validated.calls$sample <- factor(validated.calls$sample)
+  commonsamples <- unique(validated.calls$sample)
   
-  all.positive.calls.by.concordance <- table.to.vect(all.calls[all.calls[[callername]]==1,]$concordance)
-  all.negative.calls.by.concordance <- table.to.vect(all.calls[all.calls[[callername]]==0,]$concordance)
+  all.calls <- all.call.data[all.call.data$sample %in% commonsamples,]
+  all.calls <- all.calls[all.calls$concordance > 0, ]
+  all.calls$sample <- factor(all.calls$sample)
+  all.calls$concordance <- factor(all.calls$concordance)
   
-  if (verbose) {
-    print("all.positive.calls.by.concordance")
-    print(all.positive.calls.by.concordance)
-    print("all.negative.calls.by.concordance")
-    print(all.negative.calls.by.concordance)
-  }
+  all.positive.calls <- as.matrix(xtabs(~concordance+sample, data=all.calls, subset=all.calls[[caller]]==1, drop.unused.levels=FALSE))
+  all.negative.calls <- as.matrix(xtabs(~concordance+sample, data=all.calls, subset=all.calls[[caller]]==0, drop.unused.levels=FALSE))
   
-  validated.tp.by.concordance <- table.to.vect(selected.calls[selected.calls[[callername]]==1 & selected.calls$validate_true,]$concordance)
-  validated.fp.by.concordance <- table.to.vect(selected.calls[selected.calls[[callername]]==1 & !selected.calls$validate_true,]$concordance)
-  validated.tn.by.concordance <- table.to.vect(selected.calls[selected.calls[[callername]]==0 & !selected.calls$validate_true,]$concordance)
-  validated.fn.by.concordance <- table.to.vect(selected.calls[selected.calls[[callername]]==0 & selected.calls$validate_true,]$concordance)
+  validated.tp <- as.matrix(xtabs(~concordance+sample, data=validated.calls, subset=(validated.calls[[caller]]==1 & validated.calls$validate_true), drop.unused.levels=FALSE))
+  validated.fp <- as.matrix(xtabs(~concordance+sample, data=validated.calls, subset=(validated.calls[[caller]]==1 & !validated.calls$validate_true), drop.unused.levels=FALSE))
+  validated.tn <- as.matrix(xtabs(~concordance+sample, data=validated.calls, subset=(validated.calls[[caller]]==0 & !validated.calls$validate_true), drop.unused.levels=FALSE))
+  validated.fn <- as.matrix(xtabs(~concordance+sample, data=validated.calls, subset=(validated.calls[[caller]]==0 & validated.calls$validate_true), drop.unused.levels=FALSE))
 
-  if (verbose) {
-    print("validated.tp.by.concordance")
-    print(validated.tp.by.concordance)
-    print("validated.fp.by.concordance")
-    print(validated.fp.by.concordance)
-    print("validated.tn.by.concordance")
-    print(validated.tn.by.concordance)
-    print("validated.fn.by.concordance")
-    print(validated.fn.by.concordance)
-  }
-  validated.positive.calls.by.concordance <- validated.tp.by.concordance + validated.fp.by.concordance
-  validated.negative.calls.by.concordance <- validated.tn.by.concordance + validated.fn.by.concordance
+  stopifnot(dim(all.positive.calls)==dim(all.negative.calls))
+  stopifnot(dim(all.positive.calls)==dim(validated.tp))
+  stopifnot(dim(all.positive.calls)==dim(validated.fp))
+  stopifnot(dim(all.positive.calls)==dim(validated.tn))
+  stopifnot(dim(all.positive.calls)==dim(validated.fn))
   
-  if (verbose) {
-    print("validated positive calls")
-    print(validated.positive.calls.by.concordance)
-    print("validated negative calls")
-    print(validated.negative.calls.by.concordance)
-  }
-  eps <- 0.001 #(to avoid getting NaNs when we have 0/0; we want those terms to not contribute, so give 0)
+  eps <- 0.0001
+  estimated.all.tp <- validated.tp/(validated.tp+validated.fp+eps) * all.positive.calls
+  estimated.all.fp <- validated.fp/(validated.tp+validated.fp+eps) * all.positive.calls
+  estimated.all.fn <- validated.fn/(validated.tn+validated.fn+eps) * all.negative.calls
+  estimated.all.tn <- validated.tn/(validated.tn+validated.fn+eps) * all.negative.calls
   
-  if (verbose) print("estimated all tp")
-  estimated.all.tp <- validated.tp.by.concordance/(validated.positive.calls.by.concordance+eps) * all.positive.calls.by.concordance
-  if (verbose) print(estimated.all.tp)
-  estimated.all.tp <- sum(estimated.all.tp)
-  if (verbose) print(estimated.all.tp)
-  
-  if (verbose) print("estimated all fp")
-  estimated.all.fp <- validated.fp.by.concordance/(validated.positive.calls.by.concordance+eps) * all.positive.calls.by.concordance
-  if (verbose) print(estimated.all.fp)
-  estimated.all.fp <- sum(estimated.all.fp)
-  if (verbose) print(estimated.all.fp)
-  
-  if (verbose) print("estimated all fn")
-  estimated.all.fn <- validated.fn.by.concordance/(validated.negative.calls.by.concordance+eps) * all.negative.calls.by.concordance
-  if (verbose) print(estimated.all.fn)
-  estimated.all.fn <- sum(estimated.all.fn)
-  if (verbose) print(estimated.all.fn)
-  
-  sensitivity <- estimated.all.tp/(estimated.all.tp + estimated.all.fn)
-  precision <- estimated.all.tp/(estimated.all.tp + estimated.all.fp)
-  
-  f1 = 2*sensitivity*precision/(sensitivity+precision)
+  #sensitivity.by.sample <- colSums(estimated.all.tp)/(colSums(estimated.all.tp + estimated.all.fn)+eps)
+  #precision.by.sample <- colSums(estimated.all.tp)/(colSums(estimated.all.tp + estimated.all.fp)+eps)
+  #f1.by.sample = 2*sensitivity.by.sample*precision.by.sample/(sensitivity.by.sample+precision.by.sample+eps)
+  #print(sensitivity.by.sample)
+  #print(precision.by.sample)
+  #print(f1.by.sample)
+
+  sensitivity <- sum(estimated.all.tp)/(sum(estimated.all.tp + estimated.all.fn)+eps)
+  precision <- sum(estimated.all.tp)/(sum(estimated.all.tp + estimated.all.fp)+eps)
+  f1 <- 2*sensitivity*precision/(sensitivity+precision+eps)
   return(list(sensitivity=sensitivity, precision=precision, f1=f1))
 }
 
-corrected.accuracies.by.sample <- function(selected.call.data, all.call.data, callername) {
-  vals <- levels(selected.call.data$sample)
-  results <- lapply(vals, 
-                    function(x) corrected.accuracies.per.sample(selected.call.data, all.call.data, callername, x))
-  df <- data.frame(t(matrix(unlist(results), ncol=length(vals))))
-  colnames(df) <- c("sensitivity","precision","f1")
-  df$sample <- vals
-  df$caller <- callername
+corrected.accuracies <- function(validated.call.data, all.call.data, callers) {
+  results <- sapply(callers, function(x) corrected.accuracies.by.caller(validated.call.data, all.call.data, x))
+  df <- data.frame(t(matrix(unlist(results), ncol=length(callers))))
+  colnames(df) <- dimnames(results)[[1]]
+  df$caller <- dimnames(results)[[2]]
   return(df)
 }
