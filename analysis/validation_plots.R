@@ -26,6 +26,10 @@ plot_validation_vaf_for_calls <- function(in_filename, out_filename, facet_by_re
     dev.off()
 }
 
+plot_validation_status_by_vaf <- function(data) {
+    ggplot(data, aes(log(val_tvaf), log(val_nvaf), color=status)) + geom_point() + xlab("log(tumour validation vaf)") + ylab("log(normal validation vaf")
+}
+
 count_true_positive <- function(data) {
     return(nrow(subset(data, status == "PASS")))
 }
@@ -84,8 +88,9 @@ plot_status_stacked_bar <- function(caller_list, data, out_filename) {
     }
     df <- df[ with(df, order(-freq)),]
 
-    ggplot(df, aes(x = caller, y = freq, fill=status)) + geom_bar(stat = "identity")
-    ggsave(out_filename, width = 10, height = 10)
+    ggplot(df, aes(x = caller, y = freq, fill=status)) + 
+        geom_bar(stat = "identity") + 
+        theme(text = element_text(size=20), axis.text.x = element_text(angle=45, hjust=1))
 }
 
 plot_sens_by_vaf <- function(caller_list, data, out_filename) {
@@ -109,5 +114,82 @@ plot_sens_by_vaf <- function(caller_list, data, out_filename) {
     df$sensitivity = df$caller_validated_true / df$total_validated_true
     ggplot(df, aes(val_tvaf_bin * 0.05, sensitivity, color=caller)) + geom_point() + geom_line() + ylim(0, 1) + xlim(0, 0.5)
     ggsave(out_filename, width = 20, height = 10)
+}
 
+caller_by_sample_heatmap <- function(caller_list, data, variable) {
+    require(stringr)
+    derived <- calculate_sensitivity_precision_by_caller_by_sample(caller_list, data)
+    derived$sample_short_name = str_sub(derived$sample, 1, 6)
+
+    ggplot(derived, aes(sample_short_name, caller)) + 
+        geom_tile(aes_string(fill = variable), colour = "white") + 
+        scale_fill_gradient(low = "white", high = "steelblue", limits=c(0, 1)) +
+        xlab("Sample") +
+        ylab("Caller") +
+        theme_bw() + 
+        theme(text = element_text(size=20), axis.text.x = element_text(angle=45, hjust=1))
+}
+
+savefig <- function(name, type = "pdf", w = 10, h = 10) {
+    outfile = sprintf("plots/results/%s.%s", name, type)
+    ggsave(outfile, width=w, height=h)
+
+}
+
+build_results <- function() {
+
+    #
+    # SNV
+    # 
+    snv_data <- read.csv("snv.csv")
+    
+    plot_validation_status_by_vaf(snv_data)
+    savefig("snv_validation_status", w = 12, h = 10)
+    
+    plot_status_stacked_bar(snv_callers, snv_data)
+    savefig("snv_stacked_bar", w = 12, h = 10)
+
+    caller_by_sample_heatmap(snv_callers, snv_data, "sensitivity")
+    savefig("snv_sensitivity_by_sample")
+
+    caller_by_sample_heatmap(snv_callers, snv_data, "precision")
+    savefig("snv_precision_by_sample")
+
+    #
+    # Indels
+    #
+    indel_data <- read.csv("indel.csv")
+    indel_data$is_repeat = indel_data$repeat_count > 5
+    
+    plot_validation_status_by_vaf(indel_data)
+    savefig("indel_validation_status", w = 12, h = 10)
+
+    plot_status_stacked_bar(indel_callers, indel_data)
+    savefig("indel_stacked_bar", w = 12, h = 10)
+
+    caller_by_sample_heatmap(indel_callers, indel_data, "sensitivity")
+    savefig("indel_sensitivity_by_sample")
+
+    caller_by_sample_heatmap(indel_callers, indel_data, "precision")
+    savefig("indel_precision_by_sample")
+    
+    caller_by_sample_heatmap(indel_callers, subset(indel_data, is_repeat == FALSE), "sensitivity")
+    savefig("indel_not_repeat_sensitivity_by_sample")
+
+    caller_by_sample_heatmap(indel_callers, subset(indel_data, is_repeat == FALSE), "precision")
+    savefig("indel_not_repeat_precision_by_sample")
+
+    #
+    # SV
+    #
+    sv_data <- read.csv("sv.csv")
+    
+    plot_status_stacked_bar(sv_callers, sv_data)
+    savefig("sv_stacked_bar")
+
+    caller_by_sample_heatmap(sv_callers, sv_data, "sensitivity")
+    savefig("sv_sensitivity_by_sample")
+
+    caller_by_sample_heatmap(sv_callers, sv_data, "precision")
+    savefig("sv_precision_by_sample")
 }
