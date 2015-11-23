@@ -66,7 +66,7 @@ load_csv <- function(filename, callers) {
 #
 # raw accuracies, not taking into account the selection procedure
 #
-rawaccuracies <- function(validate_true, calls) {
+raw_accuracies <- function(validate_true, calls) {
   ntruepos = sum(validate_true==TRUE & calls==1)
   nfalsepos = sum(validate_true==FALSE & calls==1)
   nfalseneg = sum(validate_true==TRUE & calls==0)
@@ -76,7 +76,7 @@ rawaccuracies <- function(validate_true, calls) {
   return(list(sensitivity=sensitivity, precision=precision, f1=f1))
 }
 
-rawaccuracies_by_var <- function(data, caller, variable=NULL) {
+raw_accuracies_by_var <- function(data, caller, variable=NULL) {
   seenby_caller <- paste0("seenby_",caller)
   if (seenby_caller %in% names(data))
     seendata <- data[data[[seenby_caller]]==1,]
@@ -84,7 +84,7 @@ rawaccuracies_by_var <- function(data, caller, variable=NULL) {
     seendata <- data
   
   if (is.null(variable)) {
-    df <- data.frame( accuracies(seendata$validate_true, seendata[[caller]]) )
+    df <- data.frame( raw_accuracies(seendata$validate_true, seendata[[caller]]) )
     df$caller <- caller
     return(df)
   }
@@ -98,8 +98,8 @@ rawaccuracies_by_var <- function(data, caller, variable=NULL) {
   
 
   results <- lapply(vals, function(v) { rows <- seendata[[variable]]==v;
-                                        accuracies(seendata[rows,]$validate_true,
-                                                   seendata[[caller]][rows]) } )
+                                        raw_accuracies(seendata[rows,]$validate_true,
+                                                       seendata[[caller]][rows]) } )
 
   df <- data.frame(t(matrix(unlist(results), ncol=length(vals))))
   colnames(df) <- c("sensitivity","precision","f1")
@@ -110,7 +110,7 @@ rawaccuracies_by_var <- function(data, caller, variable=NULL) {
 }
 
 raw_caller_sensitivities <- function(data, callers, variable="binned_wgs_tvaf") {
-  do.call(rbind, lapply(callers, function(x) accuracies_by_var(data, x, variable)))
+  do.call(rbind, lapply(callers, function(x) raw_accuracies_by_var(data, x, variable)))
 }
 
 modelROC <- function(data, model) {
