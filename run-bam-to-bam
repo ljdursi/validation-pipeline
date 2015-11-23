@@ -19,11 +19,11 @@ do
 
     if [ ! -f ${REMAPPEDDIR}/${bamname} ]
     then
-        qsub -cwd -e logs -o logs -l h_vmem=8g -N bwamem${base} \
+        qsub -cwd -e logs -o logs -N bwamem${base} \
             -hold_jid fastqs${base} \
-            -pe smp 4 -l h_vmem=8g \
+            -pe smp 2 -l h_vmem=8g \
             ./scripts/one_realign_fastqs.sh \
                 ${FASTQDIR}/${base} \
-                ${REMAPPEDDIR}/${bamname}
+                ${REMAPPEDDIR}/${bamname} 2
     fi
 done

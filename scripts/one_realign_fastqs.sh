@@ -69,10 +69,10 @@ then
     SUBBAMS_DIR=${OUTPUTBAM%%.bam}
     mkdir -p ${SUBBAMS_DIR}
 
-    ls ${FASTQDIR}/*_1.fastq* | parallel -j $JOBS call_bwamem {} ${HEADERFILE} ${SUBBAMS_DIR} ${REFERENCE}
+    ls ${FASTQDIR}/*_1.fastq* | parallel --ungroup -j $JOBS call_bwamem {} ${HEADERFILE} ${SUBBAMS_DIR} ${REFERENCE}
 
     module load picard/1.92
-    mem=8g
+    mem=14g
     inputs=$( ls ${SUBBAMS_DIR}/*.bam | xargs -n1 -I{} echo "INPUT="{} )
     java -Xmx${mem} -Xms${mem} -jar ${PICARDROOT}/MergeSamFiles.jar \
             $inputs OUTPUT=${OUTPUTBAM} VALIDATION_STRINGENCY=LENIENT MERGE_SEQUENCE_DICTIONARIES=true
