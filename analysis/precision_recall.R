@@ -149,6 +149,7 @@ corrected.accuracies <- function(validated.calls, all.calls, caller,
   validated.calls$concordance <- factor(validated.calls$concordance)
   validated.calls$sample <- factor(validated.calls$sample)
   
+  all.calls <- all.calls[all.calls$sample %in% validated.calls$sample, ]
   all.calls$sample <- factor(all.calls$sample)
   all.calls$concordance <- factor(all.calls$concordance)
   

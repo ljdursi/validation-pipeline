@@ -21,7 +21,7 @@ OUTPUT_VCF=$2
 
 if [ ! -f "$OUTPUT_VCF" ]
 then
-    ./scripts/snv_indel_call.py --error 0.01 --callthreshold 0.02 --mindepth 25 --strand-bias -1 \
+    ./scripts/snv_indel_call.py --error 0.01 --callthreshold 0.02 --mindepth 25 --strandbias -1 \
         -i ${INPUT_VCF} \
         | sort -k1,1 -k2,2n | sed -e 's/^\([1-9XYh]\)/chr\1/' > ${OUTPUT_VCF}
 fi

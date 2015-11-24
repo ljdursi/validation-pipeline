@@ -19,7 +19,7 @@ while read -r line || [[ -n "$line" ]]; do
         do
             if [ -f selected-variants/somatic/${donor}.${vartype}.selected.vcf ]
             then
-                qsub -cwd -e logs -o logs -l h_vmem=4g -pe smp 5 \
+                qsub -cwd -e logs -o logs -l h_vmem=2g -pe smp 2 \
                     ./scripts/one-sv-count.sh \
                     selected-variants/somatic/${donor}.${vartype}.selected.vcf \
                     ${BAMDIR}/${normal} ${BAMDIR}/${tumour} \
