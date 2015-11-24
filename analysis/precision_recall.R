@@ -186,10 +186,6 @@ corrected.accuracies <- function(validated.calls, all.calls, caller,
   estimated.all.fp <- marginsum(validated.fp * pos.weights)
   estimated.all.fn <- marginsum(validated.fn * neg.weights)
 
-  print(paste("ntruepos = ", estimated.all.tp))
-  print(paste("nfalsepos = ", estimated.all.fp))
-  print(paste("nfalseneg = ", estimated.all.fn))
-
   sensitivity <- estimated.all.tp/(estimated.all.tp + estimated.all.fn+eps)
   precision <- estimated.all.tp/(estimated.all.tp + estimated.all.fp+eps)
   f1 <- 2*sensitivity*precision/(sensitivity+precision+eps)
