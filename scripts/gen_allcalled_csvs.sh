@@ -2,14 +2,21 @@
 
 declare -A CASES
 CASES[1]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 1{print $2}' )
+CASES[2]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 2{print $2}' )
 CASES[3]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 3{print $2}' )
 CASES[4]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 4{print $2}' )
 
 ALLCALLVCFDIR=/.mounts/labs/simpsonlab/users/jdursi/pcawg-validation-63/maskrepeats/master_norepeats/
-VALIDATIONVCFDIR=combined/
+VALIDATIONVCFDIR=combined/germline-realigned
+#VALIDATIONVCFDIR=combined
 
-for array in 1 3 4
+for array in 1 2 3 4
 do
+    ALLCALLDIR=${ALLCALLVCFDIR}
+    if [ $array == 2 ]
+    then
+        ALLCALLDIR=/.mounts/labs/simpsonlab/users/jdursi/pcawg-validation-63/master_nohally/
+    fi
     for vartype in snv_mnv indel sv
     do
         echo "Array ${array} ${vartype}"
