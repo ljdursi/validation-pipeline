@@ -22,7 +22,7 @@ core_callers_formula <- "validate_true ~ broad_mutect + dkfz + sanger + wgs_tvaf
 #  - union/intersect2/intersect3 : derived callers from the core pipelines
 #  - binned values for some continuous featuers: wgs_tvaf, homopolymer count, indel size
 #
-load_csv <- function(filename, callers) {
+ingest_csv <- function(filename, callers) {
   data <- read.csv(filename)
 
   caller_columns <- sapply(callers, function(x) grep(x, names(data)))
