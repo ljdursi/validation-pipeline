@@ -10,8 +10,8 @@ ARRAYFILE=metadata/ValidationSamples.csv
 VARIANTDIR=selected-variants/somatic
 SLOP=50
 
-#for array in 1 2 3 4
-for array in 2
+for array in 1 2 3 4
+#for array in 2
 do
     for vartype in snv_mnv indel
     do

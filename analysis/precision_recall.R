@@ -189,7 +189,15 @@ corrected.accuracies <- function(validated.calls, all.calls, caller,
   sensitivity <- estimated.all.tp/(estimated.all.tp + estimated.all.fn+eps)
   precision <- estimated.all.tp/(estimated.all.tp + estimated.all.fp+eps)
   f1 <- 2*sensitivity*precision/(sensitivity+precision+eps)
-  return(data.frame(sensitivity=sensitivity, precision=precision, f1=f1, caller=caller))
+  df <- data.frame(sensitivity=sensitivity, precision=precision, f1=f1, caller=caller)
+  if (length(combine) != length(by)) {
+    if (!("sample" %in% combine)) {
+      df$sample <- names(estimated.all.tp)
+    } else {
+      df$concordance <- names(estimated.all.tp)
+    }
+  }
+  return(df)
 }
 
 corrected.accuracies.by.caller <- function(validated.call.data, all.call.data, callers) {
