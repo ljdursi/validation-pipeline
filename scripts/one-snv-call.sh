@@ -24,6 +24,6 @@ OUTPUT_VCF=$4
 if [ ! -f "$OUTPUT_VCF" ]
 then
     ./scripts/snv_readcounts.py ${INPUT_VCF} ${NORMAL_RC} ${TUMOUR_RC} | \
-        ./scripts/snv_indel_call.py --error 0.01 --callthreshold 0.02 --strandbias 0.0 --mindepth 25 \
+        ./scripts/snv_indel_call.py --error 0.01 --callthreshold 0.02 --strandbias -1  --mindepth 25 \
         | sort -k1,1 -k2,2n  > ${OUTPUT_VCF}
 fi
