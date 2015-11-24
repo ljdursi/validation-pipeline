@@ -1,11 +1,19 @@
-modelROC <- function(data, model) {
-  vals <- (10:95)/100
-  prediction <- predict(model, newdata=data)
-  results <- sapply(vals, function(x) accuracies(data$validate_true, prediction > x))
-  df <- data.frame(t(matrix(unlist(results),ncol=length(vals))))
-  colnames(df) <- c("sensitivity","precision","f1")
-  df$thresh <- vals
-  return(df)
+modelROC <- function(data, model, allcalls) {
+  vals <- (1:99)/100
+  test.prediction <- predict(model, newdata=data)
+  allcalls.prediction <- predict(model, newdata=allcalls)
+  
+  test.df <- data.frame(concordance=data$concordance, sample=data$sample, model=as.vector(test.prediction), validate_true=data$validate_true)
+  allcalls.df <- data.frame(concordance=allcalls$concordance, sample=allcalls$sample, model=as.vector(allcalls.prediction))
+
+  results <- lapply(vals, function(x) {
+                            test.df$model <- as.vector(test.prediction > x);
+                            allcalls.df$model <- as.vector(allcalls.prediction > x);
+                            df <- corrected.accuracies(test.df, allcalls.df, "model");
+                            df$thresh <- x;
+                            return(df)})
+  
+  do.call(rbind,results)
 }
 
 library(randomForest)
@@ -39,7 +47,7 @@ const.f1.rocs <- function(f1s) {
 library(party)
 library(ggplot2)
 rocplot <- function(data, allcalls, formulae, names, callers, derived, title) {
-  s <- corrected.accuracies(data, allcalls, callers)
+  s <- corrected.accuracies.by.caller(data, allcalls, callers)
   s$derived <- derived
   
   allmodels <- data.frame()
@@ -49,29 +57,29 @@ rocplot <- function(data, allcalls, formulae, names, callers, derived, title) {
       test <- l[[1]]; train <- l[[2]]
       
       treemodel <- ctree(as.formula(formulae[i]), data=train)
-      results <- modelROC(test, treemodel)
+      results <- modelROC(test, treemodel, allcalls)
       results$model <- names[i]
       results$type <- "decision tree"
       
       allmodels <- rbind(allmodels, results)
       
       glmmodel <- glm(as.formula(formulae[i]), data=train)
-      results <- modelROC(test, glmmodel)
+      results <- modelROC(test, glmmodel, allcalls)
       results$model <- names[i]
       results$type <- "logistic regression"
       
       allmodels <- rbind(allmodels, results)
       
-      rfmodel <- rf(formulae[i], train)
-      results <- rfROC(test, rfmodel)
-      results$model <- names[i]
-      results$type <- "random forest"
-      
-      allmodels <- rbind(allmodels, results)
+      #rfmodel <- rf(formulae[i], train)
+      #results <- rfROC(test, rfmodel)
+      #results$model <- names[i]
+      #results$type <- "random forest"
+    #  
+      #allmodels <- rbind(allmodels, results)
     }
   }
   
-  f1s <- seq(.6,.95,.05)
+  f1s <- seq(.4,.95,.05)
   roc.contours <- const.f1.rocs(f1s)
   ggplot() + geom_point(data=s[s$derived==FALSE,], aes(x=sensitivity, y=precision, label=caller)) +
     geom_point(data=s[s$derived==TRUE,], aes(x=sensitivity, y=precision, label=caller), color='blue') +
