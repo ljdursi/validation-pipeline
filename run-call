@@ -20,21 +20,33 @@ while read -r line || [[ -n "$line" ]]; do
 
     for vartype in snv_mnv 
     do
-        qsub -cwd -e logs -o logs -l h_vmem=4g ./scripts/one-snv-call.sh \
-            selected-variants/somatic/${donor}.${vartype}.selected.vcf \
-            ${READCOUNTSDIR}/${normal}.${vartype}.rc ${READCOUNTSDIR}/${tumour}.${vartype}.rc \
-            ${VCFDIR}/${donor}.${vartype}.vcf
+        if [ -f selected-variants/somatic/${donor}.${vartype}.selected.vcf ] \
+            && [ -f ${READCOUNTSDIR}/${normal}.${vartype}.rc ] \
+            && [ -f ${READCOUNTSDIR}/${tumour}.${vartype}.rc ] \
+            && [ ! -f ${VCFDIR}/${donor}.${vartype}.vcf ]
+        then
+            qsub -cwd -e logs -o logs -l h_vmem=4g ./scripts/one-snv-call.sh \
+                selected-variants/somatic/${donor}.${vartype}.selected.vcf \
+                ${READCOUNTSDIR}/${normal}.${vartype}.rc ${READCOUNTSDIR}/${tumour}.${vartype}.rc \
+                ${VCFDIR}/${donor}.${vartype}.vcf
+        fi
     done
 
     for vartype in indel
     do
-        qsub -cwd -e logs -o logs -l h_vmem=4g ./scripts/one-indel-call.sh \
-            ${READCOUNTSDIR}/${donor}.${vartype}.vcf ${VCFDIR}/${donor}.${vartype}.vcf
+        if [ -f ${READCOUNTSDIR}/${donor}.${vartype}.vcf ] && [ ! -f ${VCFDIR}/${donor}.${vartype}.vcf ]
+        then
+            qsub -cwd -e logs -o logs -l h_vmem=4g ./scripts/one-indel-call.sh \
+                ${READCOUNTSDIR}/${donor}.${vartype}.vcf ${VCFDIR}/${donor}.${vartype}.vcf
+        fi
     done
 
     for vartype in sv
     do
-        qsub -cwd -e logs -o logs -l h_vmem=4g ./scripts/one-sv-call.sh \
-            ${READCOUNTSDIR}/${donor}.${vartype}.vcf ${VCFDIR}/${donor}.${vartype}.vcf
+        if [ -f ${READCOUNTSDIR}/${donor}.${vartype}.vcf ] && [ ! -f ${VCFDIR}/${donor}.${vartype}.vcf ]
+        then
+            qsub -cwd -e logs -o logs -l h_vmem=4g ./scripts/one-sv-call.sh \
+                ${READCOUNTSDIR}/${donor}.${vartype}.vcf ${VCFDIR}/${donor}.${vartype}.vcf
+        fi
     done
 done < metadata/sample-directory.txt
