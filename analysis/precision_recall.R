@@ -28,7 +28,7 @@ ingest_csv <- function(filename, callers) {
   caller_columns <- sapply(callers, function(x) grep(x, names(data)))
   data$concordance <- rowSums(data[,caller_columns])
   data <- data[data$concordance>0, ]
-  if (max(data$wgs_tvaf, na.rm=TRUE) > 0)
+  if ((sum(complete.cases(data$wgs_tvaf))>0) && (max(data$wgs_tvaf, na.rm=TRUE) > 0))
     data$binned_wgs_tvaf <- cut(data$wgs_tvaf, c(0,.1,.2,.3,.5,1), include.lowest=TRUE)
   data$validate_true <- data$status == "PASS"
   data$ref <- as.character(data$ref)
@@ -61,7 +61,7 @@ ingest_csv <- function(filename, callers) {
   data$indelsize <- abs(nchar(data$ref) - nchar(data$alt))
   if (max(data$indelsize, na.RM=TRUE) > 1)
     data$binned_indelsize <- cut(data$indelsize, c(0,3,5,10,25,50,100,250,max(data$indelsize)), include.lowest=TRUE, ordered_result=TRUE)
-  if (max(data$repeat_count, na.RM=TRUE) > 1)
+  if (sum(complete.cases(data$repeat_count))>0 && max(data$repeat_count, na.RM=TRUE) > 1)
     data$binned_homopolymer <- cut( data$repeat_count, c(0, 3, 10, max(data$repeat_count)), include.lowest=TRUE, ordered_result=TRUE)
   return(data)
 }

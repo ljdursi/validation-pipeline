@@ -4,6 +4,8 @@
 snv_callers <- c("adiscan", "broad_mutect", "dkfz", "lohcomplete", "mda_hgsc_gatk_muse", "oicr_bl", "oicr_sga", "sanger", "smufin", "wustl")
 indel_callers <- c("broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga", "sanger", "smufin", "wustl")
 sv_callers <- c("broad_merged", "destruct", "embl_delly", "novobreak", "sanger", "smufin")
+snv_indel_core_callers <- c("broad_mutect", "dkfz", "sanger")
+sv_core_callers <- c("broad_merged", "embl_delly", "sanger")
 
 #
 # Functions
@@ -108,7 +110,7 @@ plot_sensitivity_precision <- function(data) {
     ggplot(data, aes(precision, sensitivity, label=caller)) + geom_point() + geom_text(hjust=0, vjust=0, size=6, angle=35) + xlim(0,1) + ylim(0,1)
 }
 
-plot_status_stacked_bar <- function(caller_list, data, out_filename) {
+plot_status_stacked_bar <- function(caller_list, core_caller_list, data, out_filename) {
 
     df <- data.frame(caller=character(), status=integer(), freq=integer())
 
@@ -119,6 +121,9 @@ plot_status_stacked_bar <- function(caller_list, data, out_filename) {
         df = rbind(df, c_df)
     }
     df <- df[ with(df, order(-freq)),]
+    
+    new_caller_order <- c(core_caller_list, caller_list[!caller_list %in% core_caller_list])
+    df$caller <- factor(df$caller, levels=new_caller_order)
 
     print(df)
     ggplot(df, aes(x = caller, y = freq, fill=factor(status))) + 
@@ -185,7 +190,7 @@ savefig <- function(name, type = "pdf", w = 10, h = 10) {
 
 }
 
-build_core_plots <- function(vartype, outtag, caller_list, repeat_filter = FALSE) {
+build_core_plots <- function(vartype, outtag, caller_list, core_caller_list, repeat_filter = FALSE) {
     require(ggplot2)
     require(plyr)
 
@@ -211,7 +216,7 @@ build_core_plots <- function(vartype, outtag, caller_list, repeat_filter = FALSE
     plot_validation_status_by_vaf(validated_calls)
     savefig(sprintf("%s_validation_status", outtag), w = 12, h = 10, type = "png")
     
-    plot_status_stacked_bar(caller_list, common_sample_validated_calls)
+    plot_status_stacked_bar(caller_list, core_caller_list, common_sample_validated_calls)
     savefig(sprintf("%s_stacked_bar", outtag), w = 12, h = 10)
     
     plot_vaf_for_runs(common_sample_validated_calls)
@@ -240,8 +245,8 @@ build_core_plots <- function(vartype, outtag, caller_list, repeat_filter = FALSE
 }
 
 build_results <- function() {
-    build_core_plots("snv_mnv", "snv_mnv", snv_callers)
-    build_core_plots("indel", "indel", indel_callers)
-    build_core_plots("indel", "indel.norepeat", indel_callers, repeat_filter = TRUE)
+    build_core_plots("snv_mnv", "snv_mnv", snv_callers, snv_indel_core_callers)
+    build_core_plots("indel", "indel", indel_callers, snv_indel_core_callers)
+    build_core_plots("indel", "indel.norepeat", indel_callers, snv_indel_core_callers, repeat_filter = TRUE)
     #build_core_plots("sv", "sv", sv_callers)
 }
