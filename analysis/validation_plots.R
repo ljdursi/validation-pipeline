@@ -30,6 +30,10 @@ plot_validation_status_by_vaf <- function(data) {
     ggplot(data, aes(log(val_tvaf), log(val_nvaf), color=status)) + geom_point() + xlab("log(tumour validation vaf)") + ylab("log(normal validation vaf")
 }
 
+plot_vaf_for_runs <- function(data) {
+    ggplot(data, aes(wgs_tvaf, val_tvaf, color=status)) + geom_point() + facet_grid(status ~ .)
+}
+
 count_true_positive <- function(data) {
     return(nrow(subset(data, status == "PASS")))
 }
@@ -43,6 +47,22 @@ count_true_positive_for_caller <- function(data, caller) {
 # Count the total number of calls for a caller
 count_total_calls_for_caller <- function(data, caller) {
     return(sum(data[caller]))
+}
+
+# Count total calls per caller for the data frame
+count_total_calls <- function(data, caller_list) {
+    total_calls <- vector()
+    for(c in caller_list) {
+        total_calls <- c(total_calls, count_total_calls_for_caller(data, c))
+    }
+    return(data.frame(caller=caller_list, total_calls))
+}
+
+# Calculate the total number of calls for each caller on each sample
+count_total_calls_by_sample <- function(data, caller_list) {
+    df <- ddply(data, "sample", .fun = function(x, input_callers) 
+                                              count_total_calls(x, input_callers), input_callers=caller_list)
+    return(df)
 }
 
 # Calculate per-caller sensitivity and precision and return as a data.frame
@@ -63,12 +83,24 @@ calculate_sensitivity_precision_by_caller <- function(caller_list, data) {
 }
 
 # Calculate per-caller, per-sample sensitivity and precision
-calculate_sensitivity_precision_by_caller_by_sample <- function(caller_list, data) {
-    new_df <- ddply(data, 
+calculate_sensitivity_precision_by_caller_by_sample <- function(caller_list, validated_calls, all_calls) {
+    new_df <- ddply(validated_calls, 
                    "sample", 
-                   .fun = function(x, input_callers) 
-                        calculate_sensitivity_precision_by_caller(input_callers, x), 
-                    input_callers=caller_list)
+                   .fun = function(x, original_calls, input_callers) 
+                        corrected.accuracies(x, original_calls, input_callers),
+                    input_callers=caller_list,
+                    original_calls=all_calls)
+    return(new_df)
+}
+
+# Calculate per-caller, per-vaf-bin sensitivity and precision
+calculate_sensitivity_precision_by_caller_by_vaf <- function(caller_list, validated_calls, all_calls) {
+    new_df <- ddply(validated_calls, 
+                   "binned_wgs_tvaf", 
+                   .fun = function(x, original_calls, input_callers) 
+                        corrected.accuracies(x, original_calls, input_callers),
+                    input_callers=caller_list,
+                    original_calls=all_calls)
     return(new_df)
 }
 
@@ -88,7 +120,8 @@ plot_status_stacked_bar <- function(caller_list, data, out_filename) {
     }
     df <- df[ with(df, order(-freq)),]
 
-    ggplot(df, aes(x = caller, y = freq, fill=status)) + 
+    print(df)
+    ggplot(df, aes(x = caller, y = freq, fill=factor(status))) + 
         geom_bar(stat = "identity") + 
         theme(text = element_text(size=20), axis.text.x = element_text(angle=45, hjust=1))
 }
@@ -102,8 +135,11 @@ plot_sens_by_vaf <- function(caller_list, data, out_filename) {
     # subset calls to just those that PASS
     passed <- subset(data, status == "PASS")
 
+    # annotated with the tvaf bin this call falls in
+    passed$val_tvaf_bin = as.integer(passed$val_tvaf / 0.05)
+
     for(c in caller_list) {
-        c_df <- ddply(snv_pass, "val_tvaf_bin", 
+        c_df <- ddply(passed, "val_tvaf_bin", 
                   .fun = function(x, colname) 
                       summarize(x, total_validated_true = length(x[,colname]), caller_validated_true = sum(x[,colname])), 
                   colname=c)
@@ -113,15 +149,14 @@ plot_sens_by_vaf <- function(caller_list, data, out_filename) {
     }
     df$sensitivity = df$caller_validated_true / df$total_validated_true
     ggplot(df, aes(val_tvaf_bin * 0.05, sensitivity, color=caller)) + geom_point() + geom_line() + ylim(0, 1) + xlim(0, 0.5)
-    ggsave(out_filename, width = 20, height = 10)
 }
 
-caller_by_sample_heatmap <- function(caller_list, data, variable) {
+caller_by_sample_heatmap <- function(data, variable) {
     require(stringr)
-    derived <- calculate_sensitivity_precision_by_caller_by_sample(caller_list, data)
-    derived$sample_short_name = str_sub(derived$sample, 1, 6)
+    data$sample_short_name = str_sub(data$sample, 1, 6)
+    print(head(derived))
 
-    ggplot(derived, aes(sample_short_name, caller)) + 
+    ggplot(data, aes(sample_short_name, caller)) + 
         geom_tile(aes_string(fill = variable), colour = "white") + 
         scale_fill_gradient(low = "white", high = "steelblue", limits=c(0, 1)) +
         xlab("Sample") +
@@ -130,66 +165,83 @@ caller_by_sample_heatmap <- function(caller_list, data, variable) {
         theme(text = element_text(size=20), axis.text.x = element_text(angle=45, hjust=1))
 }
 
+caller_histogram <- function(data_by_sample, variable) {
+    ggplot(data_by_sample, aes_string(variable)) + 
+        geom_histogram() +
+        facet_grid(caller ~ .)
+}
+
+plot_vs_total_calls <- function(data, all_calls, variable, caller_name = "broad_mutect") {
+    sub <- subset(data, caller == caller_name)
+    total_calls_by_sample <- count_total_calls_by_sample(all_calls, c(caller_name))
+    joined <- join(sub, total_calls_by_sample)
+    print(joined)
+    ggplot(joined, aes_string("total_calls", variable)) + geom_point()
+}
+
 savefig <- function(name, type = "pdf", w = 10, h = 10) {
     outfile = sprintf("plots/results/%s.%s", name, type)
     ggsave(outfile, width=w, height=h)
 
 }
 
+build_core_plots <- function(vartype, outtag, caller_list, repeat_filter = FALSE) {
+    require(ggplot2)
+    require(plyr)
+
+    validated_calls_a2 <- ingest_csv(sprintf("array2_%s.csv", vartype), caller_list)
+    validated_calls_a3 <- ingest_csv(sprintf("array3_%s.csv", vartype), caller_list)
+    validated_calls_a4 <- ingest_csv(sprintf("array4_%s.csv", vartype), caller_list)
+    validated_calls <- rbind(validated_calls_a2, validated_calls_a3, validated_calls_a4)
+
+    all_calls_a2 <- ingest_csv(sprintf("array2_allcalls_%s.csv", vartype), caller_list)
+    all_calls_a3 <- ingest_csv(sprintf("array3_allcalls_%s.csv", vartype), caller_list)
+    all_calls_a4 <- ingest_csv(sprintf("array4_allcalls_%s.csv", vartype), caller_list)
+    all_calls <- rbind(all_calls_a2, all_calls_a3, all_calls_a4)
+    
+    if(repeat_filter) {
+        validated_calls <- subset(validated_calls, repeat_count < 5)
+        all_calls <- subset(all_calls, repeat_count < 5)
+    }
+
+    # Subset to the sample that everyone called on
+    common_sample_validated_calls <- validated_calls[validated_calls$common_sample,]
+    common_sample_all_calls <- all_calls[all_calls$common_sample,]
+    
+    plot_validation_status_by_vaf(validated_calls)
+    savefig(sprintf("%s_validation_status", outtag), w = 12, h = 10, type = "png")
+    
+    plot_status_stacked_bar(caller_list, common_sample_validated_calls)
+    savefig(sprintf("%s_stacked_bar", outtag), w = 12, h = 10)
+    
+    plot_vaf_for_runs(common_sample_validated_calls)
+    savefig(sprintf("%s_vaf_by_run", outtag), w = 12, h = 10, type = "png")
+
+    #plot_sens_by_vaf(caller_list, common_sample_validated_calls)
+    #savefig(sprintf("%s_sensitivity_by_vaf", outtag), w = 12, h = 10)
+
+    # make a data.frame of sensitivity/precision by sample, per caller
+    sp_by_sample <- corrected.accuracies.by.caller.by.sample(common_sample_validated_calls, common_sample_all_calls, caller_list)
+
+    caller_by_sample_heatmap(sp_by_sample, "sensitivity")
+    savefig(sprintf("%s_sensitivity_by_sample", outtag), w = 16, h = 10)
+
+    caller_by_sample_heatmap(sp_by_sample, "precision")
+    savefig(sprintf("%s_precision_by_sample", outtag), w = 16, h = 10)
+
+    caller_histogram(sp_by_sample, "sensitivity")
+    savefig(sprintf("%s_sensitivity_histogram", outtag))
+    
+    caller_histogram(sp_by_sample, "precision")
+    savefig(sprintf("%s_precision_histogram", outtag))
+
+    plot_vs_total_calls(sp_by_sample, all_calls, "sensitivity")
+    savefig(sprintf("%s_sensitivity_by_number_of_calls_mutect", outtag))
+}
+
 build_results <- function() {
-
-    #
-    # SNV
-    # 
-    snv_data <- read.csv("snv.csv")
-    
-    plot_validation_status_by_vaf(snv_data)
-    savefig("snv_validation_status", w = 12, h = 10)
-    
-    plot_status_stacked_bar(snv_callers, snv_data)
-    savefig("snv_stacked_bar", w = 12, h = 10)
-
-    caller_by_sample_heatmap(snv_callers, snv_data, "sensitivity")
-    savefig("snv_sensitivity_by_sample")
-
-    caller_by_sample_heatmap(snv_callers, snv_data, "precision")
-    savefig("snv_precision_by_sample")
-
-    #
-    # Indels
-    #
-    indel_data <- read.csv("indel.csv")
-    indel_data$is_repeat = indel_data$repeat_count > 5
-    
-    plot_validation_status_by_vaf(indel_data)
-    savefig("indel_validation_status", w = 12, h = 10)
-
-    plot_status_stacked_bar(indel_callers, indel_data)
-    savefig("indel_stacked_bar", w = 12, h = 10)
-
-    caller_by_sample_heatmap(indel_callers, indel_data, "sensitivity")
-    savefig("indel_sensitivity_by_sample")
-
-    caller_by_sample_heatmap(indel_callers, indel_data, "precision")
-    savefig("indel_precision_by_sample")
-    
-    caller_by_sample_heatmap(indel_callers, subset(indel_data, is_repeat == FALSE), "sensitivity")
-    savefig("indel_not_repeat_sensitivity_by_sample")
-
-    caller_by_sample_heatmap(indel_callers, subset(indel_data, is_repeat == FALSE), "precision")
-    savefig("indel_not_repeat_precision_by_sample")
-
-    #
-    # SV
-    #
-    sv_data <- read.csv("sv.csv")
-    
-    plot_status_stacked_bar(sv_callers, sv_data)
-    savefig("sv_stacked_bar")
-
-    caller_by_sample_heatmap(sv_callers, sv_data, "sensitivity")
-    savefig("sv_sensitivity_by_sample")
-
-    caller_by_sample_heatmap(sv_callers, sv_data, "precision")
-    savefig("sv_precision_by_sample")
+    build_core_plots("snv_mnv", "snv_mnv", snv_callers)
+    build_core_plots("indel", "indel", indel_callers)
+    build_core_plots("indel", "indel.norepeat", indel_callers, repeat_filter = TRUE)
+    #build_core_plots("sv", "sv", sv_callers)
 }
