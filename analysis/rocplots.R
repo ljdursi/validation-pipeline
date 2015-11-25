@@ -1,5 +1,5 @@
 modelROC <- function(data, model, allcalls) {
-  vals <- (1:99)/100
+  vals <- (5:45)/50
   test.prediction <- predict(model, newdata=data)
   allcalls.prediction <- predict(model, newdata=allcalls)
   
@@ -52,7 +52,7 @@ rocplot <- function(data, allcalls, formulae, names, callers, derived, title) {
   
   allmodels <- data.frame()
   for (i in 1:length(names)) {
-    for (trial in 1:10) {
+    for (trial in 1:7) {
       l <- split(data, sample(1:2, nrow(data), replace=TRUE))
       test <- l[[1]]; train <- l[[2]]
       
@@ -78,15 +78,29 @@ rocplot <- function(data, allcalls, formulae, names, callers, derived, title) {
       #allmodels <- rbind(allmodels, results)
     }
   }
+  allmodels <- aggregate(allmodels, by=list(allmodels$thresh, allmodels$type, allmodels$model), FUN=mean, na.rm=TRUE)[,1:6]
+  colnames(allmodels) <- c("thresh","type","model","sensitivity","precision","f1")
   
-  f1s <- seq(.4,.95,.05)
-  roc.contours <- const.f1.rocs(f1s)
+  #f1s <- seq(.4,.95,.05)
+  #roc.contours <- const.f1.rocs(f1s)
+  
+  df1 <- 0.05
+  sensitivity <- rep(seq(0,1,df1), 1/df1+1)
+  precision <- as.vector(t(matrix(x,ncol=1/df+1)))
+  f1.df <- data.frame(sensitivity=sensitivity, precision=precision, f1=2*sensitivity*precision/(sensitivity+precision))
+  f1.annotations <- seq(.1,.9,.1)
+  f1.labels <- sapply(f1.annotations, function(x) paste("F1 = ",x))
+  f1.annotations.df <- data.frame(sensitivity=f1.annotations, precision=f1.annotations, text=f1.labels)
+  
   ggplot() + geom_point(data=s[s$derived==FALSE,], aes(x=sensitivity, y=precision, label=caller)) +
     geom_point(data=s[s$derived==TRUE,], aes(x=sensitivity, y=precision, label=caller), color='blue') +
     geom_text(data=s[s$derived==FALSE,], aes(x=sensitivity, y=precision, label=caller), angle=45, hjust=1, vjust=1) + 
     geom_text(data=s[s$derived==TRUE,], aes(x=sensitivity, y=precision, label=caller, angle=+45), hjust=1, vjust=1, color='blue') + 
-    geom_smooth(data=allmodels, aes(x=sensitivity, y=precision, color=type, linetype=model)) +
-    geom_line(data=roc.contours, aes(x=sensitivity, y=precision, group=f1), color='grey', alpha=0.3) +
+    geom_line(data=allmodels, aes(x=sensitivity, y=precision, color=type, linetype=model)) +
+    geom_contour(data=f1.df, aes(x=sensitivity, y=precision, z=f1), color='grey', alpha=0.5) +
+    geom_text(data=f1.annotations.df, aes(x=sensitivity, y=precision, label=text), color='grey', alpha=0.5) +
+    theme(text = element_text(size=20)) +
+    xlim(0,1) + ylim(0,1) + xlab('recall')
     ggtitle(title)
   
 }

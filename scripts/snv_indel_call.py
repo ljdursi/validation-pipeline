@@ -43,14 +43,30 @@ def germline_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha):
     phat_normal = sum(n_evidence)*1./n_depth
     if phat_normal == 0.:
         return False
-    if phat_normal > .1:
-        return True
-    phat = sum(t_evidence + n_evidence)*1./(t_depth + n_depth)
 
-    z = (phat_normal-phat_tumour)/numpy.sqrt(phat * (1-phat) * (1./(n_depth+.0001) + 1./(t_depth+.0001)) + 0.0001)
-    if scipy.stats.norm.cdf(z) < alpha:
-        return False
-    return True
+    if phat_normal >= phat_tumour/2:
+        return True
+
+    # consistent w/ homozygous or het?  True
+    if scipy.stats.binom_test(sum(n_evidence), n_depth, 1.) >= alpha:
+        return True
+    if scipy.stats.binom_test(sum(n_evidence), n_depth, 0.5) >= alpha:
+        return True
+
+    # consistent w/ phat_tumour, w/in factor of 2?  True
+    p1 = scipy.stats.binom_test(sum(n_evidence), n_depth, phat_tumour) 
+    p2 = scipy.stats.binom_test(sum(n_evidence), n_depth, phat_tumour/2)
+    p = max(p1, p2)
+
+    if p >= alpha:
+        return True
+    return False
+#    phat = sum(t_evidence + n_evidence)*1./(t_depth + n_depth)
+#
+#    z = (phat_normal-phat_tumour)/numpy.sqrt(phat * (1-phat) * (1./(n_depth+.0001) + 1./(t_depth+.0001)) + 0.0001)
+#    if scipy.stats.norm.cdf(z) < alpha:
+#        return False
+#    return True
 
 
 def filter_genotypes():

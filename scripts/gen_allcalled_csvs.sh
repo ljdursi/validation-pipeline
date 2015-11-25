@@ -7,8 +7,9 @@ CASES[3]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 3{
 CASES[4]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 4{print $2}' )
 
 ALLCALLVCFDIR=/.mounts/labs/simpsonlab/users/jdursi/pcawg-validation-63/maskrepeats/master_norepeats/
-VALIDATIONVCFDIR=combined/germline-realigned
-#VALIDATIONVCFDIR=combined
+DEFVALIDATIONVCFDIR=combined/germline-realigned
+
+VALIDATIONVCFDIR=${VALIDATIONVCFDIR-${DEFVALIDATIONVCFDIR}}
 
 for array in 1 2 3 4
 do
