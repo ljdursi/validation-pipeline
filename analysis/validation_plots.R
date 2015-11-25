@@ -232,7 +232,9 @@ build_core_plots <- function(vartype, outtag, caller_list, core_caller_list, rep
 
     # make a data.frame of sensitivity/precision by sample, per caller
     sp_by_sample <- corrected.accuracies.by.caller.by.sample(common_sample_validated_calls, common_sample_all_calls, caller_list)
-
+    new_caller_order <- c(core_caller_list, caller_list[!caller_list %in% core_caller_list])
+    sp_by_sample$caller <- factor(sp_by_sample$caller, levels=new_caller_order)
+    
     caller_by_sample_heatmap(sp_by_sample, "sensitivity")
     savefig(sprintf("%s_sensitivity_by_sample", outtag), w = 16, h = 10)
 
