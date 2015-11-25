@@ -1,5 +1,5 @@
 modelROC <- function(data, model, allcalls) {
-  vals <- (5:45)/50
+  vals <- (2:23)/25
   test.prediction <- predict(model, newdata=data)
   allcalls.prediction <- predict(model, newdata=allcalls)
   
@@ -34,36 +34,36 @@ rfROC <- function(data, model) {
   return(df)
 }
 
-const.f1.rocs <- function(f1s) {
-  sensrange <- function(f1) { mins <- max(f1/2+.01, f1/(2.-f1)+.01); seq(mins, .99, by=.01)}
-  precrange <- function(sens, f1) {sens*f1/(2.*sens-f1)}
-  sensprecdf <- function(f1) { s <- sensrange(f1); 
-                               n <- length(s); 
-                               data.frame(f1=rep(f1,n), sensitivity=s, precision=precrange(s, f1))}
-  
-  do.call(rbind, lapply(f1s, sensprecdf))
-}
-
 library(party)
 library(ggplot2)
-rocplot <- function(data, allcalls, formulae, names, callers, derived, title) {
+rocplot <- function(data, allcalls, formulae, names, callers, derived, title, xlim=c(0,1), ylim=c(0,1)) {
   s <- corrected.accuracies.by.caller(data, allcalls, callers)
   s$derived <- derived
   
+  data$sample <- factor(data$sample)
+  allcalls <- allcalls[allcalls$sample %in% levels(data$sample), ]
+  allcalls$sample <- factor(allcalls$sample)
+  
+  weights <- xtabs(~concordance+sample,data=data)/xtabs(~concordance+sample,data=allcalls)
+  data$weights <- as.vector(apply(data[,c("concordance","sample")], 1, function(x) weights[as.integer(x[1]), x[2]]))
+  data$weights[data$weights < 1] <- 1
+  data$weights[data$weights > 10] <- 10
+  data$weights <- as.integer(data$weights)
+  
   allmodels <- data.frame()
   for (i in 1:length(names)) {
-    for (trial in 1:7) {
+    for (trial in 1:10) {
       l <- split(data, sample(1:2, nrow(data), replace=TRUE))
       test <- l[[1]]; train <- l[[2]]
       
-      treemodel <- ctree(as.formula(formulae[i]), data=train)
+      treemodel <- ctree(as.formula(formulae[i]), data=train, weights=train$weights)
       results <- modelROC(test, treemodel, allcalls)
       results$model <- names[i]
       results$type <- "decision tree"
       
       allmodels <- rbind(allmodels, results)
       
-      glmmodel <- glm(as.formula(formulae[i]), data=train)
+      glmmodel <- glm(as.formula(formulae[i]), data=train, weights=train$weights)
       results <- modelROC(test, glmmodel, allcalls)
       results$model <- names[i]
       results$type <- "logistic regression"
@@ -81,14 +81,11 @@ rocplot <- function(data, allcalls, formulae, names, callers, derived, title) {
   allmodels <- aggregate(allmodels, by=list(allmodels$thresh, allmodels$type, allmodels$model), FUN=mean, na.rm=TRUE)[,1:6]
   colnames(allmodels) <- c("thresh","type","model","sensitivity","precision","f1")
   
-  #f1s <- seq(.4,.95,.05)
-  #roc.contours <- const.f1.rocs(f1s)
-  
   df1 <- 0.05
   sensitivity <- rep(seq(0,1,df1), 1/df1+1)
-  precision <- as.vector(t(matrix(x,ncol=1/df+1)))
+  precision <- as.vector(t(matrix(sensitivity,ncol=as.integer(1/df1+1))))
   f1.df <- data.frame(sensitivity=sensitivity, precision=precision, f1=2*sensitivity*precision/(sensitivity+precision))
-  f1.annotations <- seq(.1,.9,.1)
+  f1.annotations <- seq(.1,.8,.1)
   f1.labels <- sapply(f1.annotations, function(x) paste("F1 = ",x))
   f1.annotations.df <- data.frame(sensitivity=f1.annotations, precision=f1.annotations, text=f1.labels)
   
@@ -97,10 +94,9 @@ rocplot <- function(data, allcalls, formulae, names, callers, derived, title) {
     geom_text(data=s[s$derived==FALSE,], aes(x=sensitivity, y=precision, label=caller), angle=45, hjust=1, vjust=1) + 
     geom_text(data=s[s$derived==TRUE,], aes(x=sensitivity, y=precision, label=caller, angle=+45), hjust=1, vjust=1, color='blue') + 
     geom_line(data=allmodels, aes(x=sensitivity, y=precision, color=type, linetype=model)) +
-    geom_contour(data=f1.df, aes(x=sensitivity, y=precision, z=f1), color='grey', alpha=0.5) +
+    geom_contour(data=f1.df, aes(x=sensitivity, y=precision, z=f1), color='grey', alpha=0.5, binwidth=0.1) +
     geom_text(data=f1.annotations.df, aes(x=sensitivity, y=precision, label=text), color='grey', alpha=0.5) +
     theme(text = element_text(size=20)) +
-    xlim(0,1) + ylim(0,1) + xlab('recall')
+    xlim(xlim) + ylim(ylim) + xlab('recall') +
     ggtitle(title)
-  
 }
