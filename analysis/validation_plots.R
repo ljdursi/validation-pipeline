@@ -122,11 +122,16 @@ plot_status_stacked_bar <- function(caller_list, core_caller_list, data, out_fil
     }
     df <- df[ with(df, order(-freq)),]
     
+    df$order <- 1
+    df$order[df$status=="PASS"] <- 1
+    df$order[df$status=="GERMLINE"] <- 2
+    df$order[df$status=="NOTSEEN"] <- 3
+  
     new_caller_order <- c(core_caller_list, caller_list[!caller_list %in% core_caller_list])
     df$caller <- factor(df$caller, levels=new_caller_order)
 
     print(df)
-    ggplot(df, aes(x = caller, y = freq, fill=factor(status))) + 
+    ggplot(df, aes(x = caller, y = freq, fill=status, order=order)) + 
         geom_bar(stat = "identity") + 
         theme(text = element_text(size=20), axis.text.x = element_text(angle=45, hjust=1))
 }
