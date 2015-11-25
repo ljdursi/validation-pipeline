@@ -166,7 +166,11 @@ caller_by_sample_heatmap <- function(data, variable) {
     data$sample_short_name = str_sub(data$sample, 1, 6)
     print(head(derived))
 
-    ggplot(data, aes(sample_short_name, caller)) + 
+    newdata <- data
+    levnames <- levels(data$caller)
+    newdata$caller <- factor(as.character(newdata$caller), levels=rev(levnames))
+    
+    ggplot(newdata, aes(sample_short_name, caller)) + 
         geom_tile(aes_string(fill = variable), colour = "white") + 
         scale_fill_gradient(low = "white", high = "steelblue", limits=c(0, 1)) +
         xlab("Sample") +
