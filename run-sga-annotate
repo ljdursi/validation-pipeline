@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#READCOUNTDIR=readcounts/germline-realigned
-READCOUNTDIR=readcounts
-BAMDIR=remappedbams
-#BAMDIR=germ-indel-realigned
+READCOUNTDIR=readcounts/germline-realigned
+#READCOUNTDIR=readcounts
+#BAMDIR=remappedbams
+BAMDIR=germ-indel-realigned
 
 while read -r line || [[ -n "$line" ]]; do
     items=(${line//	/ })

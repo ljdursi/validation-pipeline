@@ -193,6 +193,40 @@ plot_vs_total_calls <- function(data, all_calls, variable, caller_name = "broad_
     ggplot(joined, aes_string("total_calls", variable)) + geom_point()
 }
 
+matplotlib.colours <- function(n) {
+  twothirds = as.integer(n*2/3); otherthird = n-twothirds
+  half = as.integer(n/2); otherhalf = n-half;
+  r <- c( 0.5, seq(.2, 1, length.out=twothirds-1), rep(1., otherthird))
+  g <- c( seq(0, 1, length.out=half), seq(1, 0, length.out=otherhalf))
+  b <- seq(1, 0, length.out=n)
+  
+  l <- lapply(1:n, function(i) c(r[i],g[i],b[i]))
+  sapply(l, function(x) rgb(x[1],x[2],x[3],1))
+}
+
+plot_concordance <- function(caller_list, core_caller_list, data, title="") {
+  
+  df <- data.frame(caller=character(), concordance=integer(), freq=integer())
+  
+  for(c in caller_list) {
+    sub <- data[data[c] == 1,]
+    c_df <- count(sub, "concordance")
+    c_df$caller = c
+    df = rbind(df, c_df)
+  }
+  
+  new_caller_order <- c(core_caller_list, caller_list[!caller_list %in% core_caller_list])
+  df$caller <- factor(df$caller, levels=new_caller_order)
+  
+  df$concordance <- factor(df$concordance)
+  colnames(df) <- c("concordance", "count", "caller")
+  
+  print(df)
+  ggplot(df, aes(x = caller, y = count, fill=concordance, order=-as.integer(concordance))) +
+    geom_bar(stat = "identity") + scale_fill_manual(values=rev(matplotlib.colours(max(as.integer(df$concordance))))) +
+    ggtitle(title) + theme(text = element_text(size=20), axis.text.x = element_text(angle=45, hjust=1)) 
+}
+
 savefig <- function(name, type = "pdf", w = 10, h = 10) {
     outfile = sprintf("plots/results/%s.%s", name, type)
     ggsave(outfile, width=w, height=h)

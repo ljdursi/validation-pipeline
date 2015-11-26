@@ -215,3 +215,37 @@ corrected.accuracies.by.caller.by.sample <- function(validated.call.data, all.ca
   results <- do.call(rbind, lapply(callers, function(x) corrected.accuracies(validated.call.data, all.call.data, x, by=c("concordance","sample"), combine=c("concordance"))))
   return(results)
 }
+
+corrected.accuracies.with.cis.by.caller <- function(validated.call.data, all.call.data, callers, ntrials=100) {
+  validated.calls <- validated.call.data[,c("concordance","validate_true", "sample", callers)]
+  n <- nrow(validated.calls)
+  
+  results <- do.call(rbind, lapply(1:ntrials, function(x) {
+                                                samp.validated <- validated.calls[sample.int(n, replace=TRUE),];
+                                                df <- corrected.accuracies.by.caller(samp.validated, all.call.data, callers);
+                                                df$trial <- x;
+                                                return(df);
+                                              }))
+  means <- aggregate(results[,c("sensitivity","precision","f1")], by=list(results$caller), FUN=mean)
+  colnames(means)[1] <- "caller"
+   
+  lowci <- aggregate(results[,c("sensitivity","precision","f1")], by=list(results$caller), FUN=function(x) quantile(x,probs=c(0.05)))                  
+  colnames(lowci) <- c("caller", "sensitivity_low_ci", "precision_low_ci", "f1_low_ci")
+  
+  hici <- aggregate(results[,c("sensitivity","precision","f1")], by=list(results$caller), FUN=function(x) quantile(x,probs=c(0.95)))                  
+  colnames(hici) <- c("caller", "sensitivity_hi_ci", "precision_hi_ci", "f1_hi_ci")
+  
+  results <- merge(means, merge(lowci, hici))
+  return(results)
+}
+
+printcis <- function(data.with.cis) {
+  data.with.cis$caller <- as.character(data.with.cis$caller)
+  row_to_string <- function(x) {
+    sprintf("%20s: sensitivity = %5.3f (%8.5f-%8.5f)\n                    : precision   = %5.3f (%8.5f-%8.5f)\n                    : f1          = %5.3f (%8.5f-%8.5f)\n", 
+            x["caller"], as.numeric(x["sensitivity"]), as.numeric(x["sensitivity_low_ci"]), as.numeric(x["sensitivity_hi_ci"]), 
+            as.numeric(x["precision"]), as.numeric(x["precision_low_ci"]), as.numeric(x["precision_hi_ci"]), 
+            as.numeric(x["f1"]), as.numeric(x["f1_low_ci"]), as.numeric(x["f1_hi_ci"]))
+  }
+  as.vector(apply(data.with.cis, 1, row_to_string))
+}
