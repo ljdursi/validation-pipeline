@@ -227,6 +227,14 @@ plot_concordance <- function(caller_list, core_caller_list, data, title="") {
     ggtitle(title) + theme(text = element_text(size=20), axis.text.x = element_text(angle=45, hjust=1)) 
 }
 
+plot.corrected.sensitivity.by.vaf <- function(data) {
+    ggplot(data, aes(VAF, sensitivity, color=caller, linetype=caller)) + geom_line(size=2, aes(group=caller)) + theme(text = element_text(size=20)) + xlab("WGS Tumour VAF")
+}
+
+plot.corrected.precision.by.vaf <- function(data) {
+  ggplot(data, aes(VAF, precision, color=caller, linetype=caller)) + geom_line(size=2, aes(group=caller)) + theme(text = element_text(size=20)) + xlab("WGS Tumour VAF")
+}
+
 savefig <- function(name, type = "pdf", w = 10, h = 10) {
     outfile = sprintf("plots/results/%s.%s", name, type)
     ggsave(outfile, width=w, height=h)
@@ -287,6 +295,16 @@ build_core_plots <- function(vartype, outtag, caller_list, core_caller_list, rep
 
     plot_vs_total_calls(sp_by_sample, all_calls, "sensitivity")
     savefig(sprintf("%s_sensitivity_by_number_of_calls_mutect", outtag))
+    
+    sp_by_caller_by_vaf <- corrected.accuracies.by.caller.by.vaf(common_sample_validated_calls, common_sample_all_calls, caller_list)
+    new_caller_order <- c(core_caller_list, caller_list[!caller_list %in% core_caller_list])
+    sp_by_caller_by_vaf$caller <- factor(sp_by_caller_by_vaf$caller, levels=new_caller_order)
+    
+    plot.corrected.sensitivity.by.vaf(sp_by_caller_by_vaf)
+    savefig(sprintf("%s_sensitivity_by_vaf", outtag))
+    
+    plot.corrected.precision.by.vaf(sp_by_caller_by_vaf)
+    savefig(sprintf("%s_precision_by_vaf", outtag))
 }
 
 build_results <- function() {

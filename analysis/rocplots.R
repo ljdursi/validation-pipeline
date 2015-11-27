@@ -1,5 +1,5 @@
 modelROC <- function(data, model, allcalls) {
-  vals <- (2:23)/25
+  vals <- (5:45)/50
   test.prediction <- predict(model, newdata=data)
   allcalls.prediction <- predict(model, newdata=allcalls)
   
@@ -19,7 +19,7 @@ modelROC <- function(data, model, allcalls) {
 library(party)
 library(ggplot2)
 rocplot <- function(data, allcalls, formulae, names, callers, derived, title, 
-                    xlim=c(0,1), ylim=c(0,1), include.models=TRUE, ntrials=5) {
+                    xlim=c(0,1), ylim=c(0,1), include.models=TRUE, ntrials=10) {
   # get precision/recall values for callers
   s <- corrected.accuracies.by.caller(data, allcalls, callers)
   s$derived <- derived
@@ -106,4 +106,9 @@ roc.plot.pdfs <- function() {
           "Indel Calls: Array 2+3+4: Corrected Accuracies", 
           include.models=TRUE)
   ggsave("plots/results/indel_roc_callers_plus_derived_plus_models.pdf", width=12.7, height=10)  
+  
+  rocplot(indels[indels$repeat_count < 5,], indel_calls[indel_calls$repeat_count<5, ], formulae, names, indel_callers_plus_derived, indel_derived, 
+          "Indel Calls< No Repeats: Array 2+3+4: Corrected Accuracies", 
+          include.models=TRUE)
+  ggsave("plots/results/indel_roc_no_repeats_callers_plus_derived_plus_models.pdf", width=12.7, height=10)  
 }

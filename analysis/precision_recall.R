@@ -60,7 +60,7 @@ ingest_csv <- function(filename, callers) {
   
   data$indelsize <- abs(nchar(data$ref) - nchar(data$alt))
   if (max(data$indelsize, na.RM=TRUE) > 1)
-    data$binned_indelsize <- cut(data$indelsize, c(0,3,5,10,25,50,100,250,max(data$indelsize)), include.lowest=TRUE, ordered_result=TRUE)
+    data$binned_indelsize <- cut(data$indelsize, c(0,3,5,10,25,50,100,250,Inf), include.lowest=TRUE, ordered_result=TRUE)
   if (sum(complete.cases(data$repeat_count))>0 && max(data$repeat_count, na.RM=TRUE) > 1)
     data$binned_homopolymer <- cut( data$repeat_count, c(0, 3, 10, max(data$repeat_count)), include.lowest=TRUE, ordered_result=TRUE)
   return(data)
@@ -215,6 +215,20 @@ corrected.accuracies.by.caller.by.sample <- function(validated.call.data, all.ca
   results <- do.call(rbind, lapply(callers, function(x) corrected.accuracies(validated.call.data, all.call.data, x, by=c("concordance","sample"), combine=c("concordance"))))
   return(results)
 }
+
+corrected.accuracies.by.caller.by.vaf <- function(validated.call.data, all.call.data, callers) {
+  results <- do.call(rbind, lapply(callers, function(x) corrected.accuracies(validated.call.data, all.call.data, x, by=c("concordance","binned_wgs_tvaf"), combine=c("concordance"))))
+  colnames(results) <- c("sensitivity","precision","f1","caller","VAF")
+  return(results)
+}
+
+corrected.accuracies.by.caller.by.indelsize <- function(validated.call.data, all.call.data, callers) {
+  results <- do.call(rbind, lapply(callers, function(x) corrected.accuracies(validated.call.data, all.call.data, x, by=c("concordance","binned_indelsize"), combine=c("concordance"))))
+  colnames(results) <- c("sensitivity","precision","f1","caller","indelsize")
+  results$indelsize <- factor(results$indelsize, levels=levels(validated.call.data$binned_indelsize))
+  return(results)
+}
+
 
 corrected.accuracies.with.cis.by.caller <- function(validated.call.data, all.call.data, callers, ntrials=100) {
   validated.calls <- validated.call.data[,c("concordance","validate_true", "sample", callers)]
