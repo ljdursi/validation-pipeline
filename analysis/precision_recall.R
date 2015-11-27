@@ -8,8 +8,8 @@ indel_callers <- c("broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga
 indel_callers_plus_derived <- c(indel_callers, derived)
 indel_derived <- c(rep(FALSE, length(indel_callers)), rep(TRUE, length(derived)))
 
-sv_callers <- c("broad_merged", "destruct", "embl_delly", "novobreak", "sanger", "smufin")
-sv_callers_plus_derived <- c(snv_callers, derived)
+sv_callers <- c("broad_merged", "destruct", "embl_delly", "novobreak", "oicr_bl", "sanger", "smufin", "wustl")
+sv_callers_plus_derived <- c(sv_callers, derived)
 sv_derived <- c(rep(FALSE, length(sv_callers)), rep(TRUE, length(derived)))
 
 core_callers_formula <- "validate_true ~ broad_mutect + dkfz + sanger + wgs_tvaf + wgs_nvaf"
@@ -62,7 +62,7 @@ ingest_csv <- function(filename, callers) {
   if (max(data$indelsize, na.RM=TRUE) > 1)
     data$binned_indelsize <- cut(data$indelsize, c(0,3,5,10,25,50,100,250,Inf), include.lowest=TRUE, ordered_result=TRUE)
   if (sum(complete.cases(data$repeat_count))>0 && max(data$repeat_count, na.RM=TRUE) > 1)
-    data$binned_homopolymer <- cut( data$repeat_count, c(0, 3, 10, max(data$repeat_count)), include.lowest=TRUE, ordered_result=TRUE)
+    data$binned_homopolymer <- cut( data$repeat_count, c(0, 3, 10, 30, Inf), include.lowest=TRUE, ordered_result=TRUE)
   return(data)
 }
 

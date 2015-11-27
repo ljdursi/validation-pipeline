@@ -20,15 +20,15 @@ library(party)
 library(ggplot2)
 rocplot <- function(data, allcalls, formulae, names, callers, derived, title, 
                     xlim=c(0,1), ylim=c(0,1), include.models=TRUE, ntrials=10) {
-  # get precision/recall values for callers
-  s <- corrected.accuracies.by.caller(data, allcalls, callers)
-  s$derived <- derived
-
   # limit samples in allcalls to those in data  
   data$sample <- factor(data$sample)
   allcalls <- allcalls[allcalls$sample %in% levels(data$sample), ]
   allcalls$sample <- factor(allcalls$sample)
   
+  # get precision/recall values for callers
+  s <- corrected.accuracies.by.caller(data, allcalls, callers)
+  s$derived <- derived
+
   # Generate 
   if (include.models) {
     allmodels <- data.frame()
@@ -60,7 +60,7 @@ rocplot <- function(data, allcalls, formulae, names, callers, derived, title,
   df1 <- 0.05
   sensitivity <- rep(seq(0,1,df1), 1/df1+1)
   precision <- as.vector(t(matrix(sensitivity,ncol=as.integer(1/df1+1))))
-  f1.df <- data.frame(sensitivity=sensitivity, precision=precision, f1=2*sensitivity*precision/(sensitivity+precision))
+  f1.df <- data.frame(sensitivity=sensitivity, precision=precision, f1=2*sensitivity*precision/(sensitivity+precision+1.e-7))
   f1.annotations <- seq(.1,.8,.1)
   f1.labels <- sapply(f1.annotations, function(x) paste("F1 = ",x))
   f1.annotations.df <- data.frame(sensitivity=f1.annotations, precision=f1.annotations, text=f1.labels)
@@ -84,31 +84,42 @@ rocplot <- function(data, allcalls, formulae, names, callers, derived, title,
 }
 
 roc.plot.pdfs <- function() {
-  formulae <- c("validate_true ~ sanger + dkfz + broad_mutect + wgs_tvaf + wgs_nvaf + repeat_count")
+  formulae <- c("validate_true ~ sanger + dkfz + broad_mutect + wgs_tvaf + wgs_nvaf")
   names <- ("Core callers + VAFs")
   
-  rocplot(snvs, snv_calls, formulae, names, snv_callers, rep(FALSE, length(snv_callers)), 
-          "SNV Calls: Array 2+3+4: Corrected Accuracies", 
-          xlim=c(.5,1), ylim=c(.7,1), include.models=FALSE)
-  ggsave("plots/results/snv_roc_callers_only.pdf", width=10, height=10)
-
-  rocplot(snvs, snv_calls, formulae, names, snv_callers_plus_derived, snv_derived, 
-          "SNV Calls: Array 2+3+4: Corrected Accuracies", 
-          xlim=c(.5,1), ylim=c(.7,1), include.models=FALSE)
-  ggsave("plots/results/snv_roc_callers_plus_derived.pdf", width=10, height=10)  
+#   rocplot(snvs, snv_calls, formulae, names, snv_callers, rep(FALSE, length(snv_callers)), 
+#           "SNV Calls: Array 2+3+4: Corrected Accuracies", 
+#           xlim=c(.5,1), ylim=c(.7,1), include.models=FALSE)
+#   ggsave("plots/results/snv_roc_callers_only.pdf", width=10, height=10)
+# 
+#   rocplot(snvs, snv_calls, formulae, names, snv_callers_plus_derived, snv_derived, 
+#           "SNV Calls: Array 2+3+4: Corrected Accuracies", 
+#           xlim=c(.5,1), ylim=c(.7,1), include.models=FALSE)
+#   ggsave("plots/results/snv_roc_callers_plus_derived.pdf", width=10, height=10)  
+#   
+#   rocplot(snvs, snv_calls, formulae, names, snv_callers_plus_derived, snv_derived, 
+#           "SNV Calls: Array 2+3+4: Corrected Accuracies", 
+#           xlim=c(.5,1), ylim=c(.7,1), include.models=TRUE)
+#   ggsave("plots/results/snv_roc_callers_plus_derived_plus_models.pdf", width=12.7, height=10)  
+#   
+#   rocplot(indels, indel_calls, formulae, names, indel_callers_plus_derived, indel_derived, 
+#           "Indel Calls: Array 2+3+4: Corrected Accuracies", 
+#           include.models=TRUE)
+#   ggsave("plots/results/indel_roc_callers_plus_derived_plus_models.pdf", width=12.7, height=10)  
+#   
+#   rocplot(indels[indels$repeat_count < 5,], indel_calls[indel_calls$repeat_count<5, ], formulae, names, indel_callers_plus_derived, indel_derived, 
+#           "Indel Calls< No Repeats: Array 2+3+4: Corrected Accuracies", 
+#           include.models=TRUE)
+#   ggsave("plots/results/indel_roc_no_repeats_callers_plus_derived_plus_models.pdf", width=12.7, height=10)  
+#    
+#   formulae <- c("validate_true ~ sanger + embl_delly + broad_mutect")
+#   names <- ("Core callers")
   
-  rocplot(snvs, snv_calls, formulae, names, snv_callers_plus_derived, snv_derived, 
-          "SNV Calls: Array 2+3+4: Corrected Accuracies", 
-          xlim=c(.5,1), ylim=c(.7,1), include.models=TRUE)
-  ggsave("plots/results/snv_roc_callers_plus_derived_plus_models.pdf", width=12.7, height=10)  
-  
-  rocplot(indels, indel_calls, formulae, names, indel_callers_plus_derived, indel_derived, 
-          "Indel Calls: Array 2+3+4: Corrected Accuracies", 
-          include.models=TRUE)
-  ggsave("plots/results/indel_roc_callers_plus_derived_plus_models.pdf", width=12.7, height=10)  
-  
-  rocplot(indels[indels$repeat_count < 5,], indel_calls[indel_calls$repeat_count<5, ], formulae, names, indel_callers_plus_derived, indel_derived, 
-          "Indel Calls< No Repeats: Array 2+3+4: Corrected Accuracies", 
-          include.models=TRUE)
-  ggsave("plots/results/indel_roc_no_repeats_callers_plus_derived_plus_models.pdf", width=12.7, height=10)  
+  badsamples <- c("5e4bbb6b-66b2-4787-b8ce-70d17bc80ba8","bf95e410-b371-406c-a192-391d2fce94b2", "0e90fb64-00b2-4b53-bbc7-df8182b84060")
+  goodsvs <- svs[!svs$sample %in% badsamples, ]
+  goodsv_calls <- sv_calls[!sv_calls$sample %in% badsamples, ]
+  rocplot(goodsvs, goodsv_calls, formulae, names, sv_callers_plus_derived, sv_derived, 
+          "SV Calls: Array 2+3+4 - 3 samples: Corrected Accuracies", 
+          include.models=FALSE)
+  ggsave("plots/results/sv_roc_callers_plus_derived.pdf", width=10, height=10)  
 }

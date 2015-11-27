@@ -29,7 +29,7 @@ def parse_combined():
                  'oicr_bl', 'oicr_sga', 'sanger', 'smufin', 'wustl']
     indel_callers=['broad_mutect', 'crg_clindel', 'dkfz', 'novobreak', 'oicr_sga', 
                    'sanger', 'smufin', 'wustl']
-    sv_callers=['broad_merged', 'destruct', 'embl_delly', 'novobreak', 'sanger', 'smufin']
+    sv_callers=['broad_merged', 'destruct', 'embl_delly', 'novobreak', 'oicr_bl', 'sanger', 'smufin', 'wustl']
 
     parser = argparse.ArgumentParser( description='Set genotypes based on DP4 scores')
     parser.add_argument('inputs', nargs="+")
@@ -82,6 +82,8 @@ def parse_combined():
                             itemdict[caller] = '1'
                         else:
                             itemdict[caller] = '0'
+                if key == 'varlen':
+                    itemdict['varlen'] = val
                 if key == 'RepeatRefCount':
                     itemdict['repeat_count'] = val
                 if key == 'RepeatRefCount':

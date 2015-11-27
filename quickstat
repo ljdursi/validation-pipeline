@@ -13,7 +13,7 @@ then
     callers="broad_mutect crg_clindel dkfz novobreak oicr_sga sanger smufin wustl"
 elif [ "$TYPE" == "sv" ]
 then
-    callers="broad_merged destruct embl_delly novobreak sanger smufin"
+    callers="broad_merged destruct embl_delly novobreak oicr_bl sanger smufin wustl"
 fi
 
 echo "Total calls          : " $( cat ${VCFDIR}/*.${TYPE}.vcf | grep -cv "^#" )
