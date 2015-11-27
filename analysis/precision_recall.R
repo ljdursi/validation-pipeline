@@ -142,6 +142,17 @@ estimated.num.mutations <- function(selected.call.data, all.call.data, samplenam
   return(as.integer(sum(total.calls.by.concordance*truefrac.by.concordance)))
 }
 
+uncorrected.accuracies <- function(validated.calls, all.calls, caller) {
+  ntruepos <- sum(validated.calls$validate_true==TRUE & validated.calls[[caller]]==1)
+  nfalsepos <- sum(validated.calls$validate_true==FALSE & validated.calls[[caller]]==1)
+  nfalseneg <- sum(validated.calls$validate_true==TRUE & validated.calls[[caller]]==0)
+  
+  sensitivity <- ntruepos/(ntruepos+nfalseneg)
+  precision <- ntruepos/(ntruepos+nfalsepos)
+  f1 = 2*sensitivity*precision/(sensitivity+precision)
+  data.frame(sensitivity=sensitivity, precision=precision, f1=f1, caller=caller)
+}
+
 corrected.accuracies <- function(validated.calls, all.calls, caller, 
                                  by=c("concordance","sample"), 
                                  combine=c("concordance","sample")) {

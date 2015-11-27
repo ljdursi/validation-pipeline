@@ -228,11 +228,27 @@ plot_concordance <- function(caller_list, core_caller_list, data, title="") {
 }
 
 plot.corrected.sensitivity.by.vaf <- function(data) {
-    ggplot(data, aes(VAF, sensitivity, color=caller, linetype=caller)) + geom_line(size=2, aes(group=caller)) + theme(text = element_text(size=20)) + xlab("WGS Tumour VAF")
+    p <- ggplot(data, aes(VAF, sensitivity, color=caller)) + geom_point(size=3) +
+      theme(text = element_text(size=20)) + xlab("WGS Tumour VAF")
+    if ("derived" %in% colnames(data)) {
+      p <- p + geom_line(aes(group=caller, size=derived, linetype=derived)) +
+        scale_size_manual(values=c(1,2)) + scale_linetype_manual(values=c(2,1))
+    }
+    else
+      p <- p + geom_line(size=2, aes(group=caller)) 
+    return(p)
 }
 
 plot.corrected.precision.by.vaf <- function(data) {
-  ggplot(data, aes(VAF, precision, color=caller, linetype=caller)) + geom_line(size=2, aes(group=caller)) + theme(text = element_text(size=20)) + xlab("WGS Tumour VAF")
+  p <- ggplot(data, aes(VAF, precision, color=caller)) + geom_point(size=3) +
+    theme(text = element_text(size=20)) + xlab("WGS Tumour VAF")
+  if ("derived" %in% colnames(data)) {
+    p <- p + geom_line(aes(group=caller, size=derived, linetype=derived)) +
+      scale_size_manual(values=c(1,2)) + scale_linetype_manual(values=c(2,1))
+  }
+  else
+    p <- p + geom_line(size=2, aes(group=caller)) 
+  return(p)
 }
 
 savefig <- function(name, type = "pdf", w = 10, h = 10) {
