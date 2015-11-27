@@ -79,4 +79,5 @@ then
 
     module load samtools/0.1.19
     samtools index ${OUTPUTBAM}
+    ln -s $( basename $OUTPUTBAM .bam ).bai ${OUTPUTBAM}.bai
 fi
