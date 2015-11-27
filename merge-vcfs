@@ -30,7 +30,7 @@ do
     donor=$( basename $donor .indel )
     donor=$( basename $donor .sv )
     masterfile=${WGSDIR}/${base}.master.vcf
-    if [ -f $masterfile ] 
+    if [ -f $masterfile ] && [ ! -f ${OUTDIR}/${base}.vcf ]
     then
         echo "${file}:"
         ./scripts/add-germline-indel-dist-info.sh ${file} germline-calls/union/${donor}.vcf |\
