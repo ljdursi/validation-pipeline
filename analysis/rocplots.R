@@ -229,18 +229,18 @@ merged.by.vaf.plots <- function() {
                                                                "Core Callers + VAFs")
   results <- results[results$caller %in% core_callers | results$derived, ]
   print(plot.corrected.sensitivity.by.vaf(results) + ggtitle("SNV Sensitivity vs VAF, Core + Merged"))
-  ggsave("plots/results/snv_sensitivity_vs_vaf_core_plus_merged.pdf", width=10, height=10)
+  ggsave("plots/results/snv_sensitivity_vs_vaf_core_plus_merged.pdf", width=16, height=10)
   
   print(plot.corrected.precision.by.vaf(results) + ggtitle("SNV Precision vs VAF, Core + Merged"))
-  ggsave("plots/results/snv_precision_vs_vaf_core_plus_merged.pdf", width=10, height=10)
+  ggsave("plots/results/snv_precision_vs_vaf_core_plus_merged.pdf", width=16, height=10)
   
   results <- corrected.accuracies.by.caller.by.vaf.with.models(indels, indel_calls, indel_callers_plus_derived, 
                                                                indel_derived, core_callers_formula,
                                                                "Core Callers + VAFs")
   results <- results[results$caller %in% core_callers | results$derived, ]
   print(plot.corrected.sensitivity.by.vaf(results) + ggtitle("Indel Sensitivity vs VAF, Core + Merged"))
-  ggsave("plots/results/indel_sensitivity_vs_vaf_core_plus_merged.pdf", width=10, height=10)
+  ggsave("plots/results/indel_sensitivity_vs_vaf_core_plus_merged.pdf", width=16, height=10)
   
   print(plot.corrected.precision.by.vaf(results) + ggtitle("Indel Precision vs VAF, Core + Merged"))
-  ggsave("plots/results/indel_precision_vs_vaf_core_plus_merged.pdf", width=10, height=10)
+  ggsave("plots/results/indel_precision_vs_vaf_core_plus_merged.pdf", width=16, height=10)
 }

@@ -1,3 +1,4 @@
+source('analysis/precision_recall.R')
 #
 # Data
 #
@@ -29,11 +30,11 @@ plot_validation_vaf_for_calls <- function(in_filename, out_filename, facet_by_re
 }
 
 plot_validation_status_by_vaf <- function(data) {
-    ggplot(data, aes(log(val_tvaf), log(val_nvaf), color=status)) + geom_point() + xlab("log(tumour validation vaf)") + ylab("log(normal validation vaf")
+    ggplot(data, aes(log(val_tvaf), log(val_nvaf), color=status)) + geom_point(size=2) + xlab("log(tumour validation vaf)") + ylab("log(normal validation vaf")
 }
 
 plot_vaf_for_runs <- function(data) {
-    ggplot(data, aes(wgs_tvaf, val_tvaf, color=status)) + geom_point() + facet_grid(status ~ .)
+    ggplot(data, aes(wgs_tvaf, val_tvaf, color=status)) + geom_point(size=2) + facet_grid(status ~ .)
 }
 
 count_true_positive <- function(data) {
@@ -158,7 +159,7 @@ plot_sens_by_vaf <- function(caller_list, data, out_filename) {
         df <- rbind(df, c_df)
     }
     df$sensitivity = df$caller_validated_true / df$total_validated_true
-    ggplot(df, aes(val_tvaf_bin * 0.05, sensitivity, color=caller)) + geom_point() + geom_line() + ylim(0, 1) + xlim(0, 0.5)
+    ggplot(df, aes(val_tvaf_bin * 0.05, sensitivity, color=caller)) + geom_point(size=2) + geom_line() + ylim(0, 1) + xlim(0, 0.5)
 }
 
 caller_by_sample_heatmap <- function(data, variable) {
@@ -231,11 +232,11 @@ plot.corrected.sensitivity.by.vaf <- function(data) {
     p <- ggplot(data, aes(VAF, sensitivity, color=caller)) + geom_point(size=3) +
       theme(text = element_text(size=20)) + xlab("WGS Tumour VAF")
     if ("derived" %in% colnames(data)) {
-      p <- p + geom_line(aes(group=caller, size=derived, linetype=derived)) +
+      p <- p + geom_line(aes(group=caller, size=derived, linetype=derived)) + geom_point(size=3) +
         scale_size_manual(values=c(1,2)) + scale_linetype_manual(values=c(2,1))
     }
     else
-      p <- p + geom_line(size=2, aes(group=caller)) 
+      p <- p + geom_line(size=2, aes(group=caller)) + geom_point(size=3)
     return(p)
 }
 
@@ -243,11 +244,11 @@ plot.corrected.precision.by.vaf <- function(data) {
   p <- ggplot(data, aes(VAF, precision, color=caller)) + geom_point(size=3) +
     theme(text = element_text(size=20)) + xlab("WGS Tumour VAF")
   if ("derived" %in% colnames(data)) {
-    p <- p + geom_line(aes(group=caller, size=derived, linetype=derived)) +
+    p <- p + geom_line(aes(group=caller, size=derived, linetype=derived)) + geom_point(size=3) + 
       scale_size_manual(values=c(1,2)) + scale_linetype_manual(values=c(2,1))
   }
   else
-    p <- p + geom_line(size=2, aes(group=caller)) 
+    p <- p + geom_line(size=2, aes(group=caller)) + geom_point(size=3)
   return(p)
 }
 
@@ -317,10 +318,10 @@ build_core_plots <- function(vartype, outtag, caller_list, core_caller_list, rep
     sp_by_caller_by_vaf$caller <- factor(sp_by_caller_by_vaf$caller, levels=new_caller_order)
     
     plot.corrected.sensitivity.by.vaf(sp_by_caller_by_vaf)
-    savefig(sprintf("%s_sensitivity_by_vaf", outtag))
+    savefig(sprintf("%s_sensitivity_by_vaf", outtag), w=16, h=10)
     
     plot.corrected.precision.by.vaf(sp_by_caller_by_vaf)
-    savefig(sprintf("%s_precision_by_vaf", outtag))
+    savefig(sprintf("%s_precision_by_vaf", outtag), w=16, h=10)
 }
 
 build_results <- function() {
@@ -329,3 +330,5 @@ build_results <- function() {
     build_core_plots("indel", "indel.norepeat", indel_callers, snv_indel_core_callers, repeat_filter = TRUE)
     #build_core_plots("sv", "sv", sv_callers)
 }
+
+build_results()

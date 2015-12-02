@@ -22,8 +22,12 @@ core_callers_formula <- "validate_true ~ broad_mutect + dkfz + sanger + wgs_tvaf
 #  - union/intersect2/intersect3 : derived callers from the core pipelines
 #  - binned values for some continuous featuers: wgs_tvaf, homopolymer count, indel size
 #
-ingest_csv <- function(filename, callers) {
+ingest_csv <- function(filename, callers, keep.lowdepth=FALSE) {
   data <- read.csv(filename)
+  if (!keep.lowdepth) {
+    data <- data[data$status != "LOWDEPTH",]
+    data$status <- factor(data$status)
+  }
 
   caller_columns <- sapply(callers, function(x) grep(x, names(data)))
   data$concordance <- rowSums(data[,caller_columns])
@@ -230,6 +234,7 @@ corrected.accuracies.by.caller.by.sample <- function(validated.call.data, all.ca
 corrected.accuracies.by.caller.by.vaf <- function(validated.call.data, all.call.data, callers) {
   results <- do.call(rbind, lapply(callers, function(x) corrected.accuracies(validated.call.data, all.call.data, x, by=c("concordance","binned_wgs_tvaf"), combine=c("concordance"))))
   colnames(results) <- c("sensitivity","precision","f1","caller","VAF")
+  results$VAF <- factor(results$VAF, levels=levels(validated.call.data$binned_wgs_tvaf))
   return(results)
 }
 

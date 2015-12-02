@@ -54,7 +54,8 @@ depth.plot <- function() {
     data <- melt(data, id=c("array","variant"))
     colnames(data) <- c("array","variant","sample","depth")
     ggplot(data) + geom_density(aes(x=depth, color=sample, y=..count..)) + facet_grid(array~variant) + 
-            scale_x_log10() + scale_y_log10(limits=c(1,100000)) + geom_text(data=counts, aes(x=x,y=y, label=labels), size=3) + geom_line(data=line,aes(x=x,y=y),color="red",size=1.25)
+            geom_text(data=counts, aes(x=x,y=y, label=labels), size=3) + geom_line(data=line,aes(x=x,y=y),color="red",size=1.25) +
+            scale_x_log10() + scale_y_log10(limits=c(1,100000)) 
     ggsave("plots/results/depth_plot.pdf", width=10, height=10)
 }
 
