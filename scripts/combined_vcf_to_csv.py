@@ -44,7 +44,7 @@ def parse_combined():
     else:
         caller_names = sv_callers
 
-    headerfields = ['chrom', 'pos', 'sample', 'status', 'ref', 'alt', 'val_tvaf', 'val_nvaf', 'wgs_tvaf', 'wgs_nvaf', 'repeat_count', 'varlen', 'indel_dist' ]
+    headerfields = ['chrom', 'pos', 'sample', 'status', 'ref', 'alt', 'val_tvaf', 'val_nvaf', 'val_tdepth', 'val_ndepth', 'wgs_tvaf', 'wgs_nvaf', 'repeat_count', 'varlen', 'indel_dist' ]
     headerfields = headerfields + caller_names
     print(','.join(headerfields), file=args.output)
 
@@ -98,10 +98,12 @@ def parse_combined():
                     validation_normal_var_depth = sum([int(x) for x in val.split(',')])
                 if key == 'NormalReads':
                     validation_normal_depth = int(val)
+                    itemdict['val_ndepth'] = val
                 if key == 'TumourEvidenceReads':
                     validation_tumour_var_depth = sum([int(x) for x in val.split(',')])
                 if key == 'TumourReads':
                     validation_tumour_depth = int(val)
+                    itemdict['val_tdepth'] = val
             
             if not validation_tumour_var_depth is None and not validation_tumour_depth is None:
                 itemdict['val_tvaf'] = str(1.0*validation_tumour_var_depth/(validation_tumour_depth+0.00001))

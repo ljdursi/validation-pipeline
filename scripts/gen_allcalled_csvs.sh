@@ -25,13 +25,13 @@ do
         if [ ! -z "${files}" ]
         then
             echo " all calls"
-            ./scripts/combined_vcf_to_csv.py -t ${vartype} $files -o array${array}_allcalls_${vartype}.csv
+            ./scripts/combined_vcf_to_csv.py -t ${vartype} $files -o csvs/array${array}_allcalls_${vartype}.csv
         fi
         files=$( for case in ${CASES[$array]}; do ls ${VALIDATIONVCFDIR}/${case}.${vartype}.vcf 2> /dev/null; done )
         if [ ! -z "${files}" ]
         then
             echo " validated calls"
-            ./scripts/combined_vcf_to_csv.py -t ${vartype} $files -o array${array}_${vartype}.csv
+            ./scripts/combined_vcf_to_csv.py -t ${vartype} $files -o csvs/array${array}_${vartype}.csv
         fi
     done
 done

@@ -83,6 +83,8 @@ def filter_genotypes():
         tumour_clip_evidence = [int(x) for x in record.INFO['TumourBp1ClipEvidence']] + [int(x) for x in record.INFO['TumourBp2ClipEvidence']]
 
         if min(normal_reads, tumour_reads) < args.mindepth:
+            record.FILTER = ['LOWDEPTH']
+            vcf_writer.write_record(record)
             continue
 
         allfilter = []
