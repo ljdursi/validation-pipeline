@@ -36,7 +36,7 @@ then
         --alleles ${INPUT_VCF} \
         -L ${INTERVALS} \
         --genotyping_mode GENOTYPE_GIVEN_ALLELES \
-        --activeRegionSize 500 \
+        --activeRegionMaxSize 500 \
         --forceActive \
         -dt none \
         --minPruning 100 \
