@@ -8,7 +8,7 @@ module load python-packages/2
 module load gcc/4.8.1
 module load 
 
-if [ $# -eq 0 ] || [ -z "$1" ] || [ -z "$2" ] || [ -z "$3"] || [ -z "$4" ] \
+if [ $# -eq 0 ] || [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] \
     || [ ! -f "$1" ] || [ ! -f "$2" ]  || [ ! -f "$3" ]
 then
     echo "$0 - performs read counts in support of a set of structural variant calls"

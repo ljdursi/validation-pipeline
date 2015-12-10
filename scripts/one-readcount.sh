@@ -8,7 +8,7 @@ module load bam-readcount
 
 DEFREF=/oicr/data/pancanxfer/validation/reference/bwa-0.6.2/genome.fa
 
-if [ $# -eq 0 ] || [ -z "$1" ] || [ -z "$2" ] || [ -z "$3"] || [ ! -f "$1" ] || [ ! -f "$2" ] 
+if [ $# -eq 0 ] || [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ ! -f "$1" ] || [ ! -f "$2" ] 
 then
     echo "$0 - performs read counts against a BAM at target locations"
     echo "Usage: $0 INPUT.BAM TARGETS.BED OUTPUT.RC [REFERENCE=$DEFREF]"
