@@ -11,6 +11,9 @@ do
 
     for vartype in snv_mnv 
     do
-        qsub -cwd -e logs -o logs -l h_vmem=4g ./scripts/one-readcount.sh $file beds/bysample/${donor}.${vartype}.bed ${READCOUNTDIR}/${base}.${vartype}.rc
+        if [ ! -f ${READCOUNTDIR}/${base}.${vartype}.rc ]
+        then
+            qsub -cwd -e logs -o logs -l h_vmem=4g ./scripts/one-readcount.sh $file beds/bysample/${donor}.${vartype}.bed ${READCOUNTDIR}/${base}.${vartype}.rc
+        fi
     done
 done 

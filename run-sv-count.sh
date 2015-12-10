@@ -17,7 +17,7 @@ while read -r line || [[ -n "$line" ]]; do
     then
         for vartype in sv
         do
-            if [ -f selected-variants/somatic/${donor}.${vartype}.selected.vcf ]
+            if [ -f selected-variants/somatic/${donor}.${vartype}.selected.vcf ] && [ ! -f ${READCOUNTDIR}/${donor}.${vartype}.vcf ]
             then
                 qsub -cwd -e logs -o logs -l h_vmem=2g -pe smp 2 \
                     ./scripts/one-sv-count.sh \
