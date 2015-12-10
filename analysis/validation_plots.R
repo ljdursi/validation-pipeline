@@ -262,14 +262,14 @@ build_core_plots <- function(vartype, outtag, caller_list, core_caller_list, rep
     require(ggplot2)
     require(plyr)
 
-    validated_calls_a2 <- ingest_csv(sprintf("array2_%s.csv", vartype), caller_list)
-    validated_calls_a3 <- ingest_csv(sprintf("array3_%s.csv", vartype), caller_list)
-    validated_calls_a4 <- ingest_csv(sprintf("array4_%s.csv", vartype), caller_list)
+    validated_calls_a2 <- ingest_csv(sprintf("csvs/array2_%s.csv", vartype), caller_list)
+    validated_calls_a3 <- ingest_csv(sprintf("csvs/array3_%s.csv", vartype), caller_list)
+    validated_calls_a4 <- ingest_csv(sprintf("csvs/array4_%s.csv", vartype), caller_list)
     validated_calls <- rbind(validated_calls_a2, validated_calls_a3, validated_calls_a4)
 
-    all_calls_a2 <- ingest_csv(sprintf("array2_allcalls_%s.csv", vartype), caller_list)
-    all_calls_a3 <- ingest_csv(sprintf("array3_allcalls_%s.csv", vartype), caller_list)
-    all_calls_a4 <- ingest_csv(sprintf("array4_allcalls_%s.csv", vartype), caller_list)
+    all_calls_a2 <- ingest_csv(sprintf("csvs/array2_allcalls_%s.csv", vartype), caller_list)
+    all_calls_a3 <- ingest_csv(sprintf("csvs/array3_allcalls_%s.csv", vartype), caller_list)
+    all_calls_a4 <- ingest_csv(sprintf("csvs/array4_allcalls_%s.csv", vartype), caller_list)
     all_calls <- rbind(all_calls_a2, all_calls_a3, all_calls_a4)
     
     if(repeat_filter) {

@@ -3,7 +3,7 @@ library(ggplot2)
 library(reshape)
 
 depth.data <- function() {
-    files <- c( "array2_indel.csv", "array2_snv_mnv.csv", "array2_sv.csv", "array3_indel.csv", "array3_snv_mnv.csv", "array3_sv.csv", "array4_indel.csv", "array4_snv_mnv.csv", "array4_sv.csv" )
+    files <- c( "csvs/array2_indel.csv", "csvs/array2_snv_mnv.csv", "csvs/array2_sv.csv", "csvs/array3_indel.csv", "csvs/array3_snv_mnv.csv", "csvs/array3_sv.csv", "csvs/array4_indel.csv", "csvs/array4_snv_mnv.csv", "csvs/array4_sv.csv" )
     arrays <- c( "array2", "array2", "array2", "array3", "array3", "array3", "array4", "array4", "array4" )
     type <- c( "indel", "snv_mnv", "sv", "indel", "snv_mnv", "sv", "indel", "snv_mnv", "sv" )
     callers <- list( indel_callers, snv_callers, sv_callers, indel_callers, snv_callers, sv_callers, indel_callers, snv_callers, sv_callers)
