@@ -15,7 +15,7 @@ while read -r line || [[ -n "$line" ]]; do
     then
         for vartype in indel
         do
-            if [ -f selected-variants/somatic/${donor}.${vartype}.selected.vcf ]
+            if [ -f selected-variants/somatic/${donor}.${vartype}.selected.vcf ] && [ ! -f ${READCOUNTDIR}/${donor}.${vartype}.vcf ]
             then
                 if [ ! -f selected-variants/somatic/gatk-format/${donor}.${vartype}.selected.vcf ]
                 then
