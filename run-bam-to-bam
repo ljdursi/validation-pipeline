@@ -1,10 +1,10 @@
 #!/bin/bash
 
-input_bams=$( find ingest-bams -name "*.bam" )
+readonly input_bams=$( find ingest-bams -name "*.bam" )
 
-FASTQDIR=fastqs
-REMAPPEDDIR=remappedbams
-INDELREALIGNEDDIR=germ-indel-realigned
+readonly FASTQDIR=fastqs
+readonly REMAPPEDDIR=remappedbams
+readonly INDELREALIGNEDDIR=germ-indel-realigned
 
 for input_bam in ${input_bams}
 do
