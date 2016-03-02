@@ -221,6 +221,11 @@ corrected.accuracies.by.caller <- function(validated.call.data, all.call.data, c
   return(results)
 }
 
+uncorrected.accuracies.by.caller <- function(validated.call.data, all.call.data, callers) {
+  results <- do.call(rbind, lapply(callers, function(x) uncorrected.accuracies(validated.call.data, all.call.data, x)))
+  return(results)
+}
+
 corrected.accuracies.by.caller.pooled <- function(validated.call.data, all.call.data, callers) {
   results <- do.call(rbind, lapply(callers, function(x) corrected.accuracies(validated.call.data, all.call.data, x, by=c("concordance"), combine=c("concordance"))))
   return(results)
