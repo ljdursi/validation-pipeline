@@ -244,3 +244,33 @@ merged.by.vaf.plots <- function() {
   print(plot.corrected.precision.by.vaf(results) + ggtitle("Indel Precision vs VAF, Core + Merged"))
   ggsave("plots/results/indel_precision_vs_vaf_core_plus_merged.pdf", width=16, height=10)
 }
+
+roc.plot.uniform.pdfs <- function() {
+  
+  bad_snv_samples <- c("ee770885-b07c-4237-ae57-6eb52111446d","97449717-88cf-4caf-b4f3-d70f1bf7097d","a34f1dba-5758-45c8-b825-1c888d6c4c13")
+  goodsnvs <- snvs[!snvs$sample %in% bad_snv_samples, ]
+  goodsnv_calls <- snv_calls[!snvs$sample %in% bad_snv_samples, ]
+  rocplot(snvs, snv_calls, formulae, names, snv_callers, rep(FALSE, length(snv_callers)), 
+          "SNV Calls: All - 3 Samples(9744,a34f,ee77): Bin-Corrected", 
+          include.models=FALSE)
+  ggsave("~/Desktop/snvs.pdf", width=10, height=10)
+  
+  bad_indel_samples <- c("a34f1dba-5758-45c8-b825-1c888d6c4c13")
+  goodindels <- indels[!indels$sample %in% bad_indel_samples, ]
+  goodindel_calls <- indel_calls[!indel_calls$sample %in% bad_indel_samples, ]
+  rocplot(indels, indel_calls, formulae, names, indel_callers, rep(FALSE, length(indel_callers)), 
+          "Indel Calls: All - 1 Sample (a34f): Bin-Corrected", include.models=FALSE)
+  ggsave("~/Desktop/indels.pdf", width=10, height=10)  
+  
+  rocplot(indels[indels$repeat_count < 5,], indel_calls[indel_calls$repeat_count<5, ], formulae, names, indel_callers, rep(FALSE, length(indel_callers)), 
+          "Indel Calls, Repeat count < 5: All: Bin-Corrected", include.models=FALSE)
+  ggsave("~/Desktop/indels-norepeats.pdf", width=10, height=10)  
+  
+  bad_sv_samples <- c("5e4bbb6b-66b2-4787-b8ce-70d17bc80ba8","bf95e410-b371-406c-a192-391d2fce94b2", "0e90fb64-00b2-4b53-bbc7-df8182b84060","a34f1dba-5758-45c8-b825-1c888d6c4c13")
+  goodsvs <- svs[!svs$sample %in% bad_sv_samples, ]
+  goodsv_calls <- sv_calls[!sv_calls$sample %in% bad_sv_samples, ]
+  rocplot(goodsvs, goodsv_calls, formulae, names, sv_callers, rep(FALSE, length(sv_callers)), 
+          "SV Calls: All - 3 samples (5e4b,a34f,bf95,0e90): Bin-Corrected", 
+          include.models=FALSE)
+  ggsave("~/Desktop/svs.pdf", width=10, height=10)  
+}
