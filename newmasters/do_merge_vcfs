@@ -1,0 +1,52 @@
+#!/bin/bash
+
+module load gcc/4.8.1 python/2.7.2 openblas python-packages/2
+
+readonly PROCESSED=/.mounts/labs/simpsonlab/users/jdursi/pcawg-validation-63/processed/
+readonly NEWDATA=./processed
+readonly OUTPUT=./merged
+
+function rename {
+    sed -e "s/${sample}//g" -e "s/${pcawg1id}//g" \
+        -e 's/.somatic.snv_mnv.vcf//g' -e 's/_SNV.vcf//g' \
+        -e 's/_indel.vcf//g' -e 's/.somatic.indel.vcf//g' -e 's/_annotated_//g' \
+        -e 's/_*broad_*/broad_mutect/g' \
+        -e 's/_*dkfz_embl_*/dkfz/g' \
+        -e 's/\.mda_hgsc_gatk_muse\.[0-9]*/mda_hgsc_gatk_muse/g' \
+        -e 's/\.adiscan\.[0-9]*/adiscan/g' \
+        -e 's/\.lohcomplete\.[0-9]*/lohcomplete/g' \
+        -e 's/\.oicr_sga\.[0-9]*/oicr_sga/g' \
+        -e 's/\.oicr_bl\.[0-9]*/oicr_bl/g' \
+        -e 's/\.smufin\.[0-9]*/smufin/g' \
+        -e 's/\.crg_clindel\.[0-9]*/crg_clindel/g' \
+        -e 's/\.wustl\.[0-9]*/wustl/g'
+}
+
+samples=$( ls "${NEWDATA}"/*vcf.gz | xargs -n 1 basename | cut -f 1 -d _ | sort | uniq )
+for variant_type in "snv_mnv" "indel"
+do
+    newfile_type=$variant_type
+    if [ "$variant_type" == "snv_mnv" ]
+    then 
+        newfile_type="SNV"
+    fi
+    for sample in $samples
+    do
+        pcawg1id=$( ../scripts/pancanid_to_pcawg1id.sh $sample )
+        echo "$variant_type $pcawg1id"
+        otherfiles=$( ls ${PROCESSED}/*/${pcawg1id}*.somatic.${variant_type}.vcf.gz | grep -v broad | grep -v sanger | grep -v dkfz )
+        mergevcf ${NEWDATA}/${sample}*{broad,sanger,dkfz}*${newfile_type}*vcf.gz \
+                 $otherfiles \
+                 | rename \
+                 > merged/${pcawg1id}.${variant_type}.master.tmp
+
+        grep "^#" merged/${pcawg1id}.${variant_type}.master.tmp  \
+            > merged/${pcawg1id}.master.${variant_type}.vcf
+
+        grep -v "^#" merged/${pcawg1id}.${variant_type}.master.tmp \
+            | sort -k1,1d -k2,2n \
+            >> merged/${pcawg1id}.master.${variant_type}.vcf
+
+        rm merged/${pcawg1id}.${variant_type}.master.tmp
+    done
+done

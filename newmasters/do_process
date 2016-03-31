@@ -1,0 +1,38 @@
+#!/bin/bash
+
+module load tabix/0.2.6
+
+readonly OUTDIR=./processed
+readonly INDIR=./ingest
+
+mkdir -p "$OUTDIR"
+
+for file in "${INDIR}"/*broad*SNV*; do cp $file ${OUTDIR}; done
+for file in "${INDIR}"/*dkfz_embl*; do cp $file ${OUTDIR}; done
+
+for file in "${INDIR}"/*broad*indel*vcf.gz
+do
+    base=$( basename "$file" )
+    zcat "$file" \
+        | sed -e 's/[\.	]*$//' \
+        | bgzip > processed/${base}
+    tabix -p vcf processed/${base}
+done
+
+for file in "${INDIR}"/*sanger*vcf.gz
+do
+    base=$( basename "$file" )
+    zcat "$file" \
+        | grep -v '=$' \
+        | bgzip > processed/${base}
+    tabix -p vcf processed/${base}
+done
+
+for file in "${INDIR}"/*muse*vcf.gz
+do
+    base=$( basename "$file" )
+    zcat "$file" \
+        | sed -e 's/Tier[0-9]/PASS/' \
+        | bgzip > processed/${base}
+    tabix -p vcf processed/${base}
+done

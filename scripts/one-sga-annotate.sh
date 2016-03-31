@@ -6,7 +6,8 @@ module load parallel
 module load gcc/4.8.1
 
 DEFREF=/oicr/data/pancanxfer/validation/reference/bwa-0.6.2/genome.fa
-SGABIN=/.mounts/labs/simpsonlab/users/jsimpson/code/sga/src/build/SGA/sga 
+#SGABIN=/.mounts/labs/simpsonlab/users/jsimpson/code/sga/src/build/SGA/sga 
+SGABIN=/u/jdursi/code/sga/src/SGA/sga
 
 if [ $# -eq 0 ] || [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] \
     || [ ! -f "$1" ] || [ ! -f "$2" ] || [ ! -f "$3" ]
@@ -25,7 +26,8 @@ REFERENCE=${5-$DEFREF}
 
 if [ ! -f "$OUTPUT_VCF" ]
 then
-    ${SGABIN} somatic-variant-filters --annotate-only --threads=4 --max-alignments 50000 \
+#        --max-alignments 50000 \
+    ${SGABIN} somatic-variant-filters --annotate-only --threads=4 \
         --tumor-bam=$TUMOUR_BAM --normal-bam=$NORMAL_BAM --reference=$REFERENCE <( sed -e 's/^chr//' $INPUT_VCF ) \
         | sed -e 's/TumorVAF=[0-9\.]*;//' -e 's/NormalVAF=[0-9\.]*;//' \
               -e 's/[35]pContext=[0-9\.]*;//' -e 's/RepeatUnit=[ACTT]*;//' -e 's/RepeatRefCount=[0-9]*;//' \

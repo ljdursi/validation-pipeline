@@ -1,0 +1,39 @@
+#!/bin/bash
+module load vcfanno
+
+readonly IN_DIR=./merged
+readonly OUT_DIR=./annotated
+
+for file in ${IN_DIR}/*.master.snv_mnv.vcf
+do
+    base=$( basename $file )
+    pcawg1id=$( echo $base | cut -f 1 -d . )
+    pancanid=$( ../scripts/pcawg1id_to_pancanid.sh ${pcawg1id} )
+
+    TMPFILE1=${OUT_DIR}/${pcawg1id}.snv_mnv.tmp1.vcf 
+    TMPFILE2=${OUT_DIR}/${pcawg1id}.snv_mnv.tmp2.vcf 
+
+    echo -n "snv: ${pawg1id} "
+    # generate by-file annotation configuration file
+    sed -e "s/@@SAMPLE@@/${pancanid}/" annotation/snv_annotations.conf.template > ${OUT_DIR}/${pcawg1id}.snv_annotations.conf
+
+    # step 1: add dbsnp, cosmic, gencode
+    echo -n " dbsnp/cosmic/gencode "
+    vcfanno -lua annotation/custom.lua annotation/dbsnp+cosmic+gencode.conf ${file} 2>> logs/annotate_errs.log \
+        | sed -e 's/gencode=[A-Za-z,]*;//' \
+        > ${TMPFILE1}
+
+    # step 2: add uniform snv annotations, muse-as-feature
+    echo -n " uniform annotations "
+    vcfanno ${OUT_DIR}/${pcawg1id}.snv_annotations.conf ${TMPFILE1} \
+        > ${TMPFILE2} 2>> logs/annotate_errs.log
+
+    # step 3: calculate VAFs from uniform snv annotations
+    echo -n " vafs "
+    vcfanno -lua annotation/custom.lua annotation/vaf.conf ${TMPFILE2} \
+        > ${OUT_DIR}/${pcawg1id}.master.snv_mnv.vcf 2>> logs/annotate_errs.log
+    echo ""
+
+#    rm ${TMPFILE1} ${TMPFILE2}
+#    rm ${OUT_DIR}/${pcawg1id}.snv_annotations.conf
+done

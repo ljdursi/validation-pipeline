@@ -1,0 +1,25 @@
+[[annotation]]
+file="./processed/@@SAMPLE@@_annotated_broad_SNV.vcf.gz"
+fields = ["NormalEvidenceReads", "NormalReads", "TumourAvgVarBaseQ", "TumourAvgVarMapQ", "TumourAvgVarPosn", "TumourEvidenceReads", "TumourReads"]
+ops=["self", "self", "self", "self", "self", "self", "self"]
+
+[[annotation]]
+file="./processed/@@SAMPLE@@_annotated_dkfz_embl_SNV.vcf.gz"
+fields = ["NormalEvidenceReads", "NormalReads", "TumourAvgVarBaseQ", "TumourAvgVarMapQ", "TumourAvgVarPosn", "TumourEvidenceReads", "TumourReads"]
+ops=["self", "self", "self", "self", "self", "self", "self"]
+
+[[annotation]]
+file="./processed/@@SAMPLE@@_annotated_sanger_SNV.vcf.gz"
+fields = ["NormalEvidenceReads", "NormalReads", "TumourAvgVarBaseQ", "TumourAvgVarMapQ", "TumourAvgVarPosn", "TumourEvidenceReads", "TumourReads"]
+ops=["self", "self", "self", "self", "self", "self", "self"]
+
+[[annotation]]
+file="./processed/@@SAMPLE@@_annotated_muse_SNV.vcf.gz"
+fields = ["NormalEvidenceReads", "NormalReads", "TumourAvgVarBaseQ", "TumourAvgVarMapQ", "TumourAvgVarPosn", "TumourEvidenceReads", "TumourReads"]
+ops=["self", "self", "self", "self", "self", "self", "self"]
+
+[[annotation]]
+file="./processed/@@SAMPLE@@_annotated_muse_SNV.vcf.gz"
+fields = ["ID"]
+names = ["muse_feature"]
+ops=["count"]
