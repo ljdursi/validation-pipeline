@@ -6,7 +6,7 @@ readonly OUT_DIR=./annotated
 
 for variant in "snv_mnv" "indel"
 do
-    for file in ${IN_DIR}/*.master.${variant}.vcf
+    for file in ${IN_DIR}/*.${variant}.master.vcf
     do
         base=$( basename $file )
         pcawg1id=$( echo $base | cut -f 1 -d . )
@@ -35,9 +35,9 @@ do
         then
             echo -n " vafs "
             vcfanno -p 4 -lua annotation/custom.lua annotation/vaf.conf ${TMPFILE2} \
-                > ${OUT_DIR}/${pcawg1id}.master.${variant}.vcf 2>> logs/annotate_errs.log
+                > ${OUT_DIR}/${pcawg1id}.${variant}.master.vcf 2>> logs/annotate_errs.log
         else
-            cp ${TMPFILE2} ${OUT_DIR}/${pcawg1id}.master.${variant}.vcf 
+            cp ${TMPFILE2} ${OUT_DIR}/${pcawg1id}.${variant}.master.vcf 
         fi
         echo ""
 

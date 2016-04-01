@@ -41,11 +41,11 @@ do
                  > merged/${pcawg1id}.${variant_type}.master.tmp
 
         grep "^#" merged/${pcawg1id}.${variant_type}.master.tmp  \
-            > merged/${pcawg1id}.master.${variant_type}.vcf
+            > merged/${pcawg1id}.${variant_type}.master.vcf
 
         grep -v "^#" merged/${pcawg1id}.${variant_type}.master.tmp \
             | sort -k1,1d -k2,2n \
-            >> merged/${pcawg1id}.master.${variant_type}.vcf
+            >> merged/${pcawg1id}.${variant_type}.master.vcf
 
         rm merged/${pcawg1id}.${variant_type}.master.tmp
     done
