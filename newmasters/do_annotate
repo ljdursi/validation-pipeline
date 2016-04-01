@@ -4,8 +4,7 @@ module load vcfanno
 readonly IN_DIR=./merged
 readonly OUT_DIR=./annotated
 
-#for variant in "snv_mnv" "indel"
-for variant in "indel"
+for variant in "snv_mnv" "indel"
 do
     for file in ${IN_DIR}/*.master.${variant}.vcf
     do
