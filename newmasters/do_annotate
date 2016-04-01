@@ -22,20 +22,20 @@ do
 
         # step 1: add dbsnp, cosmic, gencode
         echo -n " dbsnp/cosmic/gencode "
-        vcfanno -lua annotation/custom.lua annotation/dbsnp+cosmic+gencode.conf ${file} 2>> logs/annotate_errs.log \
+        vcfanno -p 4 -lua annotation/custom.lua annotation/dbsnp+cosmic+gencode.conf ${file} 2>> logs/annotate_errs.log \
             | sed -e 's/gencode=[A-Za-z,]*;//' \
             > ${TMPFILE1}
 
         # step 2: add uniform snv annotations, muse-as-feature
         echo -n " uniform annotations "
-        vcfanno ${OUT_DIR}/${pcawg1id}.${variant}_annotations.conf ${TMPFILE1} \
+        vcfanno -p 4 ${OUT_DIR}/${pcawg1id}.${variant}_annotations.conf ${TMPFILE1} \
             > ${TMPFILE2} 2>> logs/annotate_errs.log
 
         # step 3: calculate VAFs from uniform snv annotations
         if [ "$variant" == "snv_mnv" ] 
         then
             echo -n " vafs "
-            vcfanno -lua annotation/custom.lua annotation/vaf.conf ${TMPFILE2} \
+            vcfanno -p 4 -lua annotation/custom.lua annotation/vaf.conf ${TMPFILE2} \
                 > ${OUT_DIR}/${pcawg1id}.master.${variant}.vcf 2>> logs/annotate_errs.log
         else
             cp ${TMPFILE2} ${OUT_DIR}/${pcawg1id}.master.${variant}.vcf 
