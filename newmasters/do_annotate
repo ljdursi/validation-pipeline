@@ -4,6 +4,30 @@ module load vcfanno
 readonly IN_DIR=./merged
 readonly OUT_DIR=./annotated
 
+function renamefields {
+    local filename=$1
+    sed -i -e 's/3pContext/wgs_3pContext/g' \
+           -e 's/5pContext/wgs_5pContext/g' \
+           -e 's/GermIndelDist/wgs_GermIndelDist/g' \
+           -e 's/NormalEvidenceReads/wgs_NormalEvidenceReads/g' \
+           -e 's/NormalReads/wgs_NormalReads/g'  \
+           -e 's/NormalTotalDepth/wgs_NormalTotalDepth/g' \
+           -e 's/NormalVAF/wgs_NormalVAF/g' \
+           -e 's/NormalVarDepth/wgs_NormalVarDepth/g' \
+           -e 's/RepeatRefCount/wgs_RepeatRefCount/g'  \
+           -e 's/RepeatUnit/wgs_RepeatUnit/g'  \
+           -e 's/TumorVAF/wgs_TumorVAF/g' \
+           -e 's/TumourReads/wgs_TumorReads/g'  \
+           -e 's/TumorVarDepth/wgs_TumorVarDepth/g' \
+           -e 's/TumourAvgVarBaseQ/wgs_TumorAvgVarBaseQ/g'  \
+           -e 's/TumourAvgVarMapQ/wgs_TumorAvgVarMapQ/g' \
+           -e 's/TumourAvgVarPosn/wgs_TumorAvgVarPosn/g' \
+           -e 's/TumourEvidenceReads/wgs_TumorEvidenceReads/g'  \
+           -e 's/TumorTotalDepth/wgs_TumorReads/g' \
+           -e 's/TumorTotalDepth/wgs_TumorTotalDepth/g'  \
+           ${filename}
+}
+
 for variant in "snv_mnv" "indel"
 do
     for file in ${IN_DIR}/*.${variant}.master.vcf
@@ -43,5 +67,6 @@ do
 
         rm ${TMPFILE1} ${TMPFILE2}
         rm ${OUT_DIR}/${pcawg1id}.${variant}_annotations.conf
+        renamefields ${OUT_DIR}/${pcawg1id}.${variant}.master.vcf 
     done
 done
