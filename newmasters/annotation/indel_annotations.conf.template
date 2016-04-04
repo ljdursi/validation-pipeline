@@ -1,16 +1,16 @@
 [[annotation]]
 file="./processed/@@SAMPLE@@_annotated_broad_indel.vcf.gz"
-fields = ["wgs_3pContext", "wgs_5pContext", "wgs_NormalVarDepth", "wgs_NormalTotalDepth", "wgs_NormalVAF", "wgs_TumorVarDepth", "wgs_TumorTotalDepth", "wgs_TumorVAF", "wgs_RepeatRefCount", "wgs_RepeatUnit" ]
+fields = ["3pContext", "5pContext", "NormalVarDepth", "NormalTotalDepth", "NormalVAF", "TumorVarDepth", "TumorTotalDepth", "TumorVAF", "RepeatRefCount", "RepeatUnit" ]
 ops=["self", "self", "self", "self", "self", "self", "self", "self", "self", "self"]
 
 [[annotation]]
 file="./processed/@@SAMPLE@@_annotated_dkfz_embl_indel.vcf.gz"
-fields = ["wgs_3pContext", "wgs_5pContext", "wgs_NormalVarDepth", "wgs_NormalTotalDepth", "wgs_NormalVAF", "wgs_TumorVarDepth", "wgs_TumorTotalDepth", "wgs_TumorVAF", "wgs_RepeatRefCount", "wgs_RepeatUnit" ]
+fields = ["3pContext", "5pContext", "NormalVarDepth", "NormalTotalDepth", "NormalVAF", "TumorVarDepth", "TumorTotalDepth", "TumorVAF", "RepeatRefCount", "RepeatUnit" ]
 ops=["self", "self", "self", "self", "self", "self", "self", "self", "self", "self"]
 
 [[annotation]]
 file="./processed/@@SAMPLE@@_annotated_sanger_indel.vcf.gz"
-fields = ["wgs_3pContext", "wgs_5pContext", "wgs_NormalVarDepth", "wgs_NormalTotalDepth", "wgs_NormalVAF", "wgs_TumorVarDepth", "wgs_TumorTotalDepth", "wgs_TumorVAF", "wgs_RepeatRefCount", "wgs_RepeatUnit" ]
+fields = ["3pContext", "5pContext", "NormalVarDepth", "NormalTotalDepth", "NormalVAF", "TumorVarDepth", "TumorTotalDepth", "TumorVAF", "RepeatRefCount", "RepeatUnit" ]
 ops=["self", "self", "self", "self", "self", "self", "self", "self", "self", "self"]
 
 
