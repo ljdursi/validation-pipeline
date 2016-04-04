@@ -16,7 +16,7 @@ function rename {
         -e 's/\.adiscan\.[0-9]*/adiscan/g' \
         -e 's/\.lohcomplete\.[0-9]*/lohcomplete/g' \
         -e 's/\.oicr_sga\.[0-9]*/oicr_sga/g' \
-        -e 's/\.oicr_bl\.[0-9]*/oicr_bl/g' \
+        -e 's/tmp\.oicr_bl/oicr_bl/g' \
         -e 's/\.smufin\.[0-9]*/smufin/g' \
         -e 's/\.crg_clindel\.[0-9]*/crg_clindel/g' \
         -e 's/\.wustl\.[0-9]*/wustl/g'
@@ -34,9 +34,17 @@ do
     do
         pcawg1id=$( ../scripts/pancanid_to_pcawg1id.sh $sample )
         echo "$variant_type $pcawg1id"
-        otherfiles=$( ls ${PROCESSED}/*/${pcawg1id}*.somatic.${variant_type}.vcf.gz | grep -v broad | grep -v sanger | grep -v dkfz )
-        mergevcf ${NEWDATA}/${sample}*{broad,sanger,dkfz}*${newfile_type}*vcf.gz \
-                 $otherfiles \
+        otherfiles=$( ls ${PROCESSED}/*/${pcawg1id}*.somatic.${variant_type}.vcf.gz | grep -v broad | grep -v sanger | grep -v dkfz | grep -v oicr_bl )
+        oicr_bl=$( ls ${PROCESSED}/oicr_bl/${pcawg1id}*.somatic.${variant_type}.vcf.gz )
+        if [ ! -z "$oicr_bl" ] && [ -f "$oicr_bl" ]
+        then
+            zcat $oicr_bl | sed -e '/^##MuTect/d' -e '/=$/d' > merged/tmp.oicr_bl.vcf
+            oicr_bl=merged/tmp.oicr_bl.vcf
+        fi
+
+        otherfiles="${otherfiles} ${oicr_bl}"
+
+        mergevcf ${NEWDATA}/${sample}*{broad,sanger,dkfz}*${newfile_type}*vcf.gz $otherfiles \
                  | rename \
                  > merged/${pcawg1id}.${variant_type}.master.tmp
 
@@ -48,5 +56,6 @@ do
             >> merged/${pcawg1id}.${variant_type}.master.vcf
 
         rm merged/${pcawg1id}.${variant_type}.master.tmp
+        rm merged/tmp.oicr_bl.vcf
     done
 done
