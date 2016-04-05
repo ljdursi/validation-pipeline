@@ -62,6 +62,8 @@ ingest_csv <- function(filename, callers, keep.lowdepth=FALSE) {
   data$intersect2 <- ifelse( ncore > 1, 1, 0)
   data$intersect3 <- ifelse( ncore > 2, 1, 0)
   
+  data$repeat_masker[is.na(data$repeat_masker)] <- 0
+  
   data$indelsize <- abs(nchar(data$ref) - nchar(data$alt))
   if (max(data$indelsize, na.RM=TRUE) > 1)
     data$binned_indelsize <- cut(data$indelsize, c(0,3,5,10,25,50,100,250,Inf), include.lowest=TRUE, ordered_result=TRUE)
