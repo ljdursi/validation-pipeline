@@ -35,7 +35,8 @@ do
         pcawg1id=$( ../scripts/pancanid_to_pcawg1id.sh $sample )
         echo "$variant_type $pcawg1id"
         otherfiles=$( ls ${PROCESSED}/*/${pcawg1id}*.somatic.${variant_type}.vcf.gz | grep -v broad | grep -v sanger | grep -v dkfz | grep -v oicr_bl )
-        oicr_bl=$( ls ${PROCESSED}/oicr_bl/${pcawg1id}*.somatic.${variant_type}.vcf.gz )
+
+        oicr_bl=$( ls ${PROCESSED}/oicr_bl/${pcawg1id}*.somatic.${variant_type}.vcf.gz 2> /dev/null )
         if [ ! -z "$oicr_bl" ] && [ -f "$oicr_bl" ]
         then
             zcat $oicr_bl | sed -e '/^##MuTect/d' -e '/=$/d' > merged/tmp.oicr_bl.vcf
@@ -56,6 +57,6 @@ do
             >> merged/${pcawg1id}.${variant_type}.master.vcf
 
         rm merged/${pcawg1id}.${variant_type}.master.tmp
-        rm merged/tmp.oicr_bl.vcf
+        rm -f merged/tmp.oicr_bl.vcf
     done
 done

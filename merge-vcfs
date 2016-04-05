@@ -11,9 +11,11 @@
 # can be overridden at commandline, eg VCFDIR=vcfs ./run-call.sh
 DEFVCFDIR=vcfs/germline-realigned
 # output dir
-DEFOUTDIR=combined/germline-realigned
+#DEFOUTDIR=combined/germline-realigned
+DEFOUTDIR=combined/newmasters
 # directory for original master vcfs
-DEFWGSDIR=../validation_63_sftp_mirror/masked_repeats/somatic/
+#DEFWGSDIR=../validation_63_sftp_mirror/masked_repeats/somatic/
+DEFWGSDIR=./newmasters/annotated
 
 VCFDIR=${VCFDIR-${DEFVCFDIR}}
 OUTDIR=${OUTDIR-${DEFOUTDIR}}

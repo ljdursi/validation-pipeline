@@ -25,6 +25,7 @@ function renamefields {
            -e 's/TumourEvidenceReads/wgs_TumorEvidenceReads/g'  \
            -e 's/TumorTotalDepth/wgs_TumorReads/g' \
            -e 's/TumorTotalDepth/wgs_TumorTotalDepth/g'  \
+           -e 's/SOMATIC/muse_feature/g'  \
            ${filename}
 }
 

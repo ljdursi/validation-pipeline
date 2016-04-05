@@ -8,9 +8,11 @@ CASES[2]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 2{
 CASES[3]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 3{print $2}' )
 CASES[4]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 4{print $2}' )
 
-DEFALLCALLDIR=/.mounts/labs/simpsonlab/users/jdursi/pcawg-validation-63/maskrepeats/master_norepeats/
-DEFVALIDATIONVCFDIR=combined/germline-realigned
-DEFOUTDIR=csvs
+#DEFALLCALLDIR=/.mounts/labs/simpsonlab/users/jdursi/pcawg-validation-63/maskrepeats/master_norepeats/
+#DEFVALIDATIONVCFDIR=combined/germline-realigned
+DEFALLCALLDIR=./newmasters/annotated
+DEFVALIDATIONVCFDIR=./combined/newmasters
+DEFOUTDIR=./csvs/newmasters
 
 VALIDATIONVCFDIR=${VALIDATIONVCFDIR-${DEFVALIDATIONVCFDIR}}
 ALLCALLDIR=${ALLCALLDIR-${DEFALLCALLDIR}}

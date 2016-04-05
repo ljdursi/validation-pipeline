@@ -71,7 +71,8 @@ def parse_combined(files, output, callers):
                  'RepeatRefCount':('repeat_count', int_or_NA),
                  'GermIndelDist':('indel_dist', int_or_NA),
                  'wgs_NormalVAF':('wgs_nvaf', float_or_NA),
-                 'wgs_TumorVAF':('wgs_tvaf', float_or_NA)
+                 'wgs_TumorVAF':('wgs_tvaf', float_or_NA),
+                 'muse_feature':('muse_feature', int_or_NA)
                  }
 
     headerfields = headerfields + [x for x, _ in fielddict.values()] +  callers
