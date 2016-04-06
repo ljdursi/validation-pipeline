@@ -14,63 +14,6 @@ sv_derived <- c(rep(FALSE, length(sv_callers)), rep(TRUE, length(derived)))
 
 core_callers_formula <- "validate_true ~ broad_mutect + dkfz + sanger + wgs_tvaf + wgs_nvaf"
 
-#
-# load in a CSV, and add useful columns such as:
-#  - concordance
-#  - 'seenby_' columns for each caller
-#  - common_sample - if seen by all callers
-#  - union/intersect2/intersect3 : derived callers from the core pipelines
-#  - binned values for some continuous featuers: wgs_tvaf, homopolymer count, indel size
-#
-ingest_csv <- function(filename, callers, keep.lowdepth=FALSE) {
-  data <- read.csv(filename)
-  if (!keep.lowdepth) {
-    data <- data[data$status != "LOWDEPTH",]
-    data$status <- factor(data$status)
-  }
-
-  caller_columns <- sapply(callers, function(x) grep(x, names(data)))
-  data$concordance <- rowSums(data[,caller_columns])
-  data <- data[data$concordance>0, ]
-  if ((sum(complete.cases(data$wgs_tvaf))>0) && (max(data$wgs_tvaf, na.rm=TRUE) > 0))
-    data$binned_wgs_tvaf <- cut(data$wgs_tvaf, c(0,.1,.2,.3,.5,1), include.lowest=TRUE)
-  data$validate_true <- data$status == "PASS"
-  data$ref <- as.character(data$ref)
-  data$alt <- as.character(data$alt)
-  data$mnv <- ifelse( nchar(data$ref)>1, 1, 0 )
-  
-  col_names <- names(data)
-  core_callers <- as.vector(na.omit(c(grep("broad",col_names), match("dkfz",col_names), match("embl_delly", col_names), match("sanger",col_names))))
-  ncore <- rowSums(data[,core_callers])
-  
-  data$common_sample <- rep(0, nrow(data))
-  for (caller in callers) {
-    t <- tapply(data[[caller]], data$sample, FUN=sum)
-    missed.samples <- dimnames(t)[[1]][t==0]
-    seen <- paste0("seenby_",caller)
-    data[[seen]] <- rep(1, nrow(data))
-    data[[seen]][data$sample %in% missed.samples] <- 0
-    data$common_sample <- data$common_sample + data[[seen]]
-  }
-  col_names <- names(data)
-  seenby_core_callers <- as.vector(na.omit(c(grep("seenby_broad",col_names), match("seenby_dkfz",col_names), match("seenby_embl_delly", col_names), match("seenby_sanger",col_names))))
-  ncore_seenby <- rowSums(data[,seenby_core_callers])
-  
-  data$common_sample <- data$common_sample == length(callers)
-  
-  data$union <- ifelse( ncore > 0, 1, 0)
-  data$intersect2 <- ifelse( ncore > 1, 1, 0)
-  data$intersect3 <- ifelse( ncore > 2, 1, 0)
-  
-  data$repeat_masker[is.na(data$repeat_masker)] <- 0
-  
-  data$indelsize <- abs(nchar(data$ref) - nchar(data$alt))
-  if (max(data$indelsize, na.RM=TRUE) > 1)
-    data$binned_indelsize <- cut(data$indelsize, c(0,3,5,10,25,50,100,250,Inf), include.lowest=TRUE, ordered_result=TRUE)
-  if (sum(complete.cases(data$repeat_count))>0 && max(data$repeat_count, na.RM=TRUE) > 1)
-    data$binned_homopolymer <- cut( data$repeat_count, c(0, 3, 10, 30, Inf), include.lowest=TRUE, ordered_result=TRUE)
-  return(data)
-}
 
 #
 # raw accuracies, not taking into account the selection procedure
@@ -181,7 +124,7 @@ corrected.accuracies <- function(validated.calls, all.calls, caller,
   validated.fp <- as.matrix(xtabs(as.formula(form), data=validated.calls, subset=(validated.calls[[caller]]==1 & !validated.calls$validate_true), drop.unused.levels=FALSE))
   
   validated.positive.calls <- validated.tp + validated.fp
-  
+
   stopifnot(dim(all.positive.calls)==dim(all.negative.calls))
   stopifnot(dim(all.positive.calls)==dim(validated.positive.calls))
   stopifnot(dim(all.positive.calls)==dim(validated.negative.calls))
