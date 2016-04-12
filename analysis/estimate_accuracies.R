@@ -296,11 +296,44 @@ glmnetlearn <- function(formula, data) {
 }
 
 glmnetpredict <- function(model, formula, data) {
+  results <- rep(0,nrow(data))
   X <- model.matrix(formula, data=data)
-  predict(model, X, type="response", s="lambda.1se")[,1]
+  used_rows <- as.integer(dimnames(X)[[1]])
+  results[used_rows] <- predict(model, X, type="response", s="lambda.1se")[,1]
+  return(results)
 }
 
-simple_models <- function(validated.calls, all.calls, seed=1) {
+binarize <- function(data, thresh=0.5) {
+    ifelse(data > thresh, 1, 0)
+}
+
+
+simple_indel_models <- function(validated.calls, all.calls, seed=1) {
+  l <-  applymodel(validated.calls, all.calls, glmlearn, glmpredict, 
+                   as.formula("validate_true ~ wgs_nvaf + wgs_tvaf + varlen + gencode + cosmic + dbsnp + broad_mutect + dkfz + sanger"), 
+                   "logistic_regression", seed=1)
+  
+  l <-  applymodel(l$snvs, l$snv_calls, ctree, ctreepredict, 
+                   as.formula("validate_true ~ wgs_nvaf + wgs_tvaf + varlen+ gencode + cosmic + dbsnp + broad_mutect + dkfz + sanger"), 
+                   "decision_tree", seed=1)
+  
+#  l <-  applymodel(l$snvs, l$snv_calls, glmnetlearn, glmnetpredict, 
+#                   as.formula("validate_true ~ (broad_mutect + dkfz + sanger)*(wgs_nvaf + wgs_tvaf + varlen + gencode + cosmic + dbsnp)"), 
+#                   "stacked_logistic_regression", seed=1) 
+
+  l$snvs$logisticRegression <- binarize(l$snvs$logistic_regression)
+  l$snv_calls$logisticRegression <- binarize(l$snv_calls$logistic_regression)
+  
+  l$snvs$decisionTree <- binarize(l$snvs$decision_tree)
+  l$snv_calls$decisionTree <- binarize(l$snv_calls$decision_tree)
+  
+#  l$snvs$stackedLogisticRegression <- binarize(l$snvs$stacked_logistic_regression, .4)
+#  l$snv_calls$stackedLogisticRegression <- binarize(l$snv_calls$stacked_logistic_regression, .4)
+  
+  return(l)
+}
+
+simple_snv_models <- function(validated.calls, all.calls, seed=1) {
   l <-  applymodel(validated.calls, all.calls, glmlearn, glmpredict, 
                    as.formula("validate_true ~ wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_tvar_avgbaseposn + wgs_tvar_avgbaseq + gencode + cosmic + dbsnp + broad_mutect + dkfz + sanger + muse_feature"), 
                    "logistic_regression", seed=1)
@@ -312,6 +345,33 @@ simple_models <- function(validated.calls, all.calls, seed=1) {
   l <-  applymodel(l$snvs, l$snv_calls, glmnetlearn, glmnetpredict, 
                    as.formula("validate_true ~ (broad_mutect + dkfz + sanger)*(wgs_nvaf + wgs_tvaf + gencode + cosmic + dbsnp + muse_feature)"), 
                    "stacked_logistic_regression", seed=1) 
-
+  
+  l$snvs$logisticRegression <- binarize(l$snvs$logistic_regression)
+  l$snv_calls$logisticRegression <- binarize(l$snv_calls$logistic_regression)
+  
+  l$snvs$decisionTree <- binarize(l$snvs$decision_tree)
+  l$snv_calls$decisionTree <- binarize(l$snv_calls$decision_tree)
+  
+  l$snvs$stackedLogisticRegression <- binarize(l$snvs$stacked_logistic_regression, .4)
+  l$snv_calls$stackedLogisticRegression <- binarize(l$snv_calls$stacked_logistic_regression, .4)
+  
   return(l)
 }
+doboxplot <- function(l) {
+  boxplots(l$snvs, l$snv_calls, 
+           callers=c('broad_mutect','dkfz', 'sanger', 'union', 'intersect2', 'intersect3', 'two_plus', 'logisticRegression', 'decisionTree')) 
+}
+
+dovafplot <- function(l, variant="SNV") {
+  results <- corrected.accuracies.by.caller.by.vaf(l$snvs, l$snv_calls, 
+           callers=c('union', 'intersect2', 'intersect3', 'two_plus', 'logisticRegression', 'decisionTree')) 
+  results <- melt(results, id=c('caller','VAF'))
+  results$feature <- FALSE
+  results$feature[results$caller %in% c("logisticRegression","decisionTree","stackedLogisticRegression")] <- TRUE
+  ggplot(results, aes(x=VAF,y=value)) + 
+    geom_line(aes(group=caller,color=caller,linetype=feature)) + 
+    facet_grid(variable~.)  +
+    ggtitle(paste0("Accuracies of ", variant, " merge by VAF")) +
+    ylab("Accuracy")
+}
+

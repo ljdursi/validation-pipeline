@@ -21,8 +21,13 @@ modelROC <- function(data, model, allcalls, corrected=TRUE) {
 
 library(party)
 library(ggplot2)
-rocplot <- function(data, allcalls, formulae, names, callers, derived, title, 
+
+rocplot <- function(data, allcalls, callers, modelcallers, derived, title, 
                     xlim=c(0,1), ylim=c(0,1), include.models=TRUE, ntrials=10) {
+  
+  # model callers are callers which have not 0/1 T/F but floating point; 
+  # ROC(ish) plots are made for those
+  
   # limit samples in allcalls to those in data  
   data$sample <- factor(data$sample)
   allcalls <- allcalls[allcalls$sample %in% levels(data$sample), ]
@@ -35,29 +40,13 @@ rocplot <- function(data, allcalls, formulae, names, callers, derived, title,
   # Generate 
   if (include.models) {
     allmodels <- data.frame()
-    for (i in 1:length(names)) {
-      for (trial in 1:ntrials) {
-        l <- split(data, sample(1:2, nrow(data), replace=TRUE))
-        test <- l[[1]]; train <- l[[2]]
-        
-        treemodel <- ctree(as.formula(formulae[i]), data=train)
-        results <- modelROC(test, treemodel, allcalls)
-        results$model <- names[i]
-        results$type <- "decision tree"
-        
-        allmodels <- rbind(allmodels, results)
-        
-        glmmodel <- glm(as.formula(formulae[i]), data=train)
-        results <- modelROC(test, glmmodel, allcalls)
-        results$model <- names[i]
-        results$type <- "logistic regression"
-        
-        allmodels <- rbind(allmodels, results)
-        
-      }
+    for (i in 1:length(modelcallers)) {
+      results <- modelROC(data, data[[modelcallers[i]]], allcalls)
+      results$model <- modelcallers[i]
+      allmodels <- rbind(allmodels, results)
     }
-    allmodels <- aggregate(allmodels, by=list(allmodels$thresh, allmodels$type, allmodels$model), FUN=mean, na.rm=TRUE)[,1:6]
-    colnames(allmodels) <- c("thresh","type","model","sensitivity","precision","f1")
+    allmodels <- aggregate(allmodels, by=list(allmodels$thresh, allmodels$model), FUN=mean, na.rm=TRUE)[,1:6]
+    colnames(allmodels) <- c("thresh","model","sensitivity","precision","f1")
   }
   
   df1 <- 0.05
@@ -81,7 +70,7 @@ rocplot <- function(data, allcalls, formulae, names, callers, derived, title,
       geom_text(data=s[s$derived==TRUE,], aes(x=sensitivity, y=precision, label=caller, angle=+45), hjust=1, vjust=1, color='blue')
   }
   if (include.models) 
-    p <- p + geom_line(data=allmodels, aes(x=sensitivity, y=precision, color=type, linetype=model))
+    p <- p + geom_line(data=allmodels, aes(x=sensitivity, y=precision, color=model))
                        
   p
 }
