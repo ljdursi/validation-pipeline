@@ -26,7 +26,7 @@ def build_filelist(filenames, match):
     return file_list
 
 
-def parse_combined(files, output, callers):
+def parse_combined(files, output, callers, excise=False):
     """
     Parse a list of combined VCFs into a single CSV
     """
@@ -61,17 +61,21 @@ def parse_combined(files, output, callers):
 
     fielddict = {'varlen':('varlen', int_or_NA),
                  'repeat_masker':('repeat_masker', binarize),
+                 'cosmic':('cosmic', binarize),
+                 'dbsnp':('dbsnp', binarize),
                  'gencode_prioritized':('gencode', str),
                  'wgs_NormalReads':('wgs_ndepth', int_or_NA),
                  'wgs_TumorReads':('wgs_tdepth', int_or_NA),
                  'wgs_TumorAvgVarBaseQ':('wgs_tvar_avgbaseq', float_or_NA),
                  'wgs_TumorEvidenceReads':('wgs_tvardepth', sum_ints),
+                 'wgs_TumorVarDepth':('wgs_tvardepth', int_or_NA),
                  'wgs_NormalEvidenceReads':('wgs_nvardepth', sum_ints),
+                 'wgs_NormalVarDepth':('wgs_nvardepth', int_or_NA),
                  'wgs_TumorAvgVarPosn':('wgs_tvar_avgbaseposn', float_or_NA),
-                 'RepeatRefCount':('repeat_count', int_or_NA),
                  'GermIndelDist':('indel_dist', int_or_NA),
                  'wgs_NormalVAF':('wgs_nvaf', float_or_NA),
                  'wgs_TumorVAF':('wgs_tvaf', float_or_NA),
+                 'wgs_RepeatRefCount':('repeat_count', int_or_NA),
                  'muse_feature':('muse_feature', int_or_NA)
                  }
 
@@ -142,6 +146,9 @@ def parse_combined(files, output, callers):
             if not validation_normal_var_depth is None and not validation_normal_depth is None:
                 itemdict['val_nvaf'] = str(1.0*validation_normal_var_depth/(validation_normal_depth+0.00001))
 
+            if excise:
+                itemdict['chrom'] = '1'
+                itemdict['pos'] = '1'
             print(','.join([str(itemdict[h]) for h in headerfields]), file=output)
 
 def main():
@@ -158,6 +165,7 @@ def main():
     parser.add_argument('inputs', nargs="+")
     parser.add_argument('-o', '--output', type=argparse.FileType('w'),
                         default=sys.stdout)
+    parser.add_argument('-x', '--excise', action="store_true")
     parser.add_argument('-t', '--variant_type', type=str,
                         choices=["snv_mnv", "indel", "sv"], default="snv_mnv")
     args = parser.parse_args()
@@ -170,7 +178,7 @@ def main():
         caller_names = sv_callers
 
     files = build_filelist(args.inputs, args.variant_type)
-    parse_combined(files, args.output, caller_names)
+    parse_combined(files, args.output, caller_names, args.excise)
     return 0
 
 if __name__ == "__main__":

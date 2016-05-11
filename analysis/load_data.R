@@ -1,3 +1,5 @@
+library(dplyr)
+
 #
 # load in a CSV, and add useful columns such as:
 #  - concordance
@@ -9,15 +11,18 @@
 ingest_csv <- function(filename, callers, keep.lowdepth=FALSE) {
   data <- read.csv(filename)
   if (!keep.lowdepth) {
-    data <- data[data$status != "LOWDEPTH",]
+    data <- filter(data, status != "LOWDEPTH")
     data$status <- factor(data$status)
   }
+  data$repeat_count <- as.integer(data$repeat_count)
   
   caller_columns <- sapply(callers, function(x) grep(x, names(data)))
   data$concordance <- rowSums(data[,caller_columns])
-  data <- data[data$concordance>0, ]
+  data <- filter(data, concordance>0)
+  
   if ((sum(complete.cases(data$wgs_tvaf))>0) && (max(data$wgs_tvaf, na.rm=TRUE) > 0))
     data$binned_wgs_tvaf <- cut(data$wgs_tvaf, c(0,.1,.2,.3,.5,1), include.lowest=TRUE)
+  
   data$validate_true <- data$status == "PASS"
   data$ref <- as.character(data$ref)
   data$alt <- as.character(data$alt)
@@ -55,11 +60,26 @@ ingest_csv <- function(filename, callers, keep.lowdepth=FALSE) {
   data$indelsize <- abs(nchar(data$ref) - nchar(data$alt))
   if (max(data$indelsize, na.RM=TRUE) > 1)
     data$binned_indelsize <- cut(data$indelsize, c(0,3,5,10,25,50,100,250,Inf), include.lowest=TRUE, ordered_result=TRUE)
-  if (sum(complete.cases(data$repeat_count))>0 && max(data$repeat_count, na.RM=TRUE) > 1)
-    data$binned_homopolymer <- cut( data$repeat_count, c(0, 3, 10, 30, Inf), include.lowest=TRUE, ordered_result=TRUE)
+#  if (sum(complete.cases(data$repeat_count))>0 && max(data$repeat_count, na.RM=TRUE) > 1)
+#    data$binned_homopolymer <- cut( data$repeat_count, c(0, 3, 10, 30, Inf), include.lowest=TRUE, ordered_result=TRUE)
   return(data)
 }
 
+derived <- c("union", "intersect2", "intersect3")
+
+snv_callers <- c("adiscan", "broad_mutect", "dkfz", "lohcomplete", "mda_hgsc_gatk_muse", "oicr_bl", "oicr_sga", "sanger", "smufin", "wustl")
+snv_callers_plus_derived <- c(snv_callers, derived)
+snv_derived <- c(rep(FALSE, length(snv_callers)), rep(TRUE, length(derived)))
+
+indel_callers <- c("broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga", "sanger", "smufin", "wustl")
+indel_callers_plus_derived <- c(indel_callers, derived)
+indel_derived <- c(rep(FALSE, length(indel_callers)), rep(TRUE, length(derived)))
+
+sv_callers <- c("broad_merged", "destruct", "embl_delly", "novobreak", "oicr_bl", "sanger", "smufin", "wustl")
+sv_callers_plus_derived <- c(sv_callers, derived)
+sv_derived <- c(rep(FALSE, length(sv_callers)), rep(TRUE, length(derived)))
+
+core_callers_formula <- "validate_true ~ broad_mutect + dkfz + sanger + wgs_tvaf + wgs_nvaf"
 
 array4_indel_calls <- ingest_csv('csvs/newmasters/array4_allcalls_indel.csv', indel_callers)
 array3_indel_calls <- ingest_csv('csvs/newmasters/array3_allcalls_indel.csv', indel_callers)
@@ -105,26 +125,31 @@ indels$wgs_tvar_avgbaseposn <- 0
 indel_calls$wgs_tvar_avgbaseq <- 0
 indel_calls$wgs_tvar_avgbaseposn <- 0
 
-#svs <- rbind(array1_svs, array2_svs, array3_svs, array4_svs)
+bad_indel_samples <- c("a34f1dba-5758-45c8-b825-1c888d6c4c13")
+indels <- filter(indels, !sample %in% bad_indel_samples)
+indel_calls <- filter(indel_calls, !sample %in% bad_indel_samples)
 
-snvs <- snvs[snvs$common_sample & snvs$repeat_masker == 0, ]
-indels <- indels[indels$common_sample & indels$repeat_masker == 0, ]
-snv_calls <- snv_calls[snv_calls$common_sample & snv_calls$repeat_masker == 0, ]
-indel_calls <- indel_calls[indel_calls$common_sample & indel_calls$repeat_masker == 0, ]
+common_and_unmasked <- function(data) filter(data, common_sample==TRUE, repeat_masker==0)
+few_repeats <- function(data, thresh=5) filter(data, repeat_count < thresh)
+
+snvs <- common_and_unmasked(snvs)
+indels <- common_and_unmasked(indels)
+snv_calls <- common_and_unmasked(snv_calls)
+indel_calls <- common_and_unmasked(indel_calls)
 
 snvs$gencode <- as.factor(ifelse(snvs$gencode=="", "", "gene"))
 indels$gencode <- as.factor(ifelse(indels$gencode=="", "", "gene"))
 snv_calls$gencode <- as.factor(ifelse(snv_calls$gencode=="", "", "gene"))
 indel_calls$gencode <- as.factor(ifelse(indel_calls$gencode=="", "", "gene"))
 
-snv_core_calls <- snv_calls[snv_calls$union == 1, ]
-snvs_core <- snvs[snvs$union == 1, ]
-indel_core_calls <- indel_calls[indel_calls$union == 1, ]
-indels_core <- indels[indels$union == 1, ]
+snv_core_calls <- filter(snv_calls, union==1) 
+snvs_core <- filter(snvs, union==1) 
+indel_core_calls <- filter(indel_calls, union==1) 
+indels_core <- filter(indels, union==1) 
 
-indel_norepeats <- indels[indels$repeat_count < 5,]
-indel_calls_norepeats <- indel_calls[indel_calls$repeat_count < 5,]
-indel_core_calls_norepeats <- indel_core_calls[indel_core_calls$repeat_count < 5,]
+indel_norepeats <- few_repeats(indels)
+indel_calls_norepeats <- few_repeats(indel_calls)
+indel_core_calls_norepeats <- few_repeats(indel_core_calls)
 
 snv_core_calls$two_plus <- ifelse(snv_core_calls$broad_mutect + snv_core_calls$dkfz + snv_core_calls$sanger + snv_core_calls$muse_feature >= 2, 1, 0)
 snv_calls$two_plus <- ifelse(snv_calls$broad_mutect + snv_calls$dkfz + snv_calls$sanger + snv_calls$muse_feature >= 2, 1, 0)
@@ -134,6 +159,7 @@ snvs_core$two_plus <- ifelse(snvs_core$broad_mutect + snvs_core$dkfz + snvs_core
 indels_core$two_plus <- indels_core$intersect2
 snvs$two_plus <- ifelse(snvs$broad_mutect + snvs$dkfz + snvs$sanger + snvs$muse_feature >= 2, 1, 0)
 indels$two_plus <- indels$intersect2
+
 
 #rocplot(indels, indel_calls, formulae, names, indel_callers_plus_derived, indel_derived, "Indel Calls: Array 2+3+4: Corrected Accuracies, All")
 #rocplot(indels_norepeats, indel_calls_norepeats, formulae, names, indel_callers_plus_derived, indel_derived, "Indel Calls: Array 2+3+4: Corrected Accuracies, repeat_count < 5")

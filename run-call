@@ -3,8 +3,8 @@ DEFREADCOUNTSDIR=readcounts/germline-realigned
 DEFVCFDIR=vcfs/germline-realigned
 
 ## can be overridden at commandline, eg VCFDIR=vcfs ./run-call.sh
-READCOUNTSDIR=${READCOUNTSDIR-${DEFREADCOUNTSDIR}}
-VCFDIR=${VCFDIR-${DEFVCFDIR}}
+READCOUNTSDIR=${READCOUNTSDIR:-${DEFREADCOUNTSDIR}}
+VCFDIR=${VCFDIR:-${DEFVCFDIR}}
 
 echo "readcounts: ${READCOUNTSDIR}"
 echo "vcfs: ${VCFDIR}"

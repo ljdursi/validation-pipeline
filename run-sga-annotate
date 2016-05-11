@@ -1,9 +1,19 @@
 #!/bin/bash
 
-READCOUNTDIR=readcounts/germline-realigned
-#READCOUNTDIR=readcounts
+DEFREADCOUNTSDIR=readcounts/germline-realigned
+DEFBAMDIR=germ-indel-realigned
+
+#READCOUNTSDIR=readcounts
 #BAMDIR=remappedbams
-BAMDIR=germ-indel-realigned
+
+## can be overridden at commandline, eg BAMDIR=remappedbams READCOUNTSDIR=readcounts/not-realigned ./run-sga-annotate
+READCOUNTSDIR=${READCOUNTSDIR:-${DEFREADCOUNTSDIR}}
+BAMDIR=${BAMDIR:-${DEFBAMDIR}}
+
+echo "bams: ${BAMDIR}"
+echo "readcounts: ${READCOUNTSDIR}"
+
+mkdir -p $READCOUNTSDIR
 
 while read -r line || [[ -n "$line" ]]; do
     items=(${line//	/ })
@@ -16,13 +26,13 @@ while read -r line || [[ -n "$line" ]]; do
     then
         for vartype in indel
         do
-            if [ -f selected-variants/somatic/${donor}.${vartype}.selected.vcf ] && [ ! -f ${READCOUNTDIR}/${donor}.${vartype}.vcf ]
+            if [ -f selected-variants/somatic/${donor}.${vartype}.selected.vcf ] && [ ! -f ${READCOUNTSDIR}/${donor}.${vartype}.vcf ]
             then
                 qsub -cwd -e logs -o logs -l h_vmem=4g -pe smp 5 \
                     ./scripts/one-sga-annotate.sh \
                     selected-variants/somatic/${donor}.${vartype}.selected.vcf \
                     ${BAMDIR}/${normal} ${BAMDIR}/${tumour} \
-                    ${READCOUNTDIR}/${donor}.${vartype}.vcf
+                    ${READCOUNTSDIR}/${donor}.${vartype}.vcf
             fi
         done
     fi

@@ -13,7 +13,7 @@ def call_from_depths(totdepth, evidence, error_rate, prob_threshold):
     """
     Null hypothesis: counts are consistent with a binomial probabilty of error_rate
                      
-    Returns:    True if we can reject the null phyothesis w/ probability 1-prob_threshold
+    Returns:    True if we can reject the null hypothesis w/ probability 1-prob_threshold
                 False otherwise
     """
     altdepth = sum(evidence)
@@ -29,7 +29,20 @@ def reject_from_strandbias(totdepth, evidence, strand_bias):
         return True
     return False
 
-def germline_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha):
+def germline_hom_het(n_depth, n_evidence, t_depth, t_evidence, alpha):
+    # consistent w/ homozygous or het?  True
+    if scipy.stats.binom_test(sum(n_evidence), n_depth, 1.) >= alpha:
+        return True
+    if scipy.stats.binom_test(sum(n_evidence), n_depth, .95) >= alpha:
+        return True
+    if scipy.stats.binom_test(sum(n_evidence), n_depth, 0.5) >= alpha:
+        return True
+    if scipy.stats.binom_test(sum(n_evidence), n_depth, 0.45) >= alpha:
+        return True
+    return False
+
+
+def reject_from_normal_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha):
     """
     Null hypothesis: germline results are consistent with being drawn from same
                      binomial distribution as tumour.
@@ -47,16 +60,11 @@ def germline_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha):
     if phat_normal >= phat_tumour/2:
         return True
 
-    # consistent w/ homozygous or het?  True
-    if scipy.stats.binom_test(sum(n_evidence), n_depth, 1.) >= alpha:
-        return True
-    if scipy.stats.binom_test(sum(n_evidence), n_depth, 0.5) >= alpha:
-        return True
-
-    # consistent w/ phat_tumour, w/in factor of 2?  True
+    # consistent w/ phat_tumour, w/in factor of 3?  True
     p1 = scipy.stats.binom_test(sum(n_evidence), n_depth, phat_tumour) 
-    p2 = scipy.stats.binom_test(sum(n_evidence), n_depth, phat_tumour/2)
-    p = max(p1, p2)
+    p2 = scipy.stats.binom_test(sum(n_evidence), n_depth, phat_tumour/3)
+    p3 = scipy.stats.binom_test(sum(n_evidence), n_depth, min(phat_tumour*3,1.)) 
+    p = max(p1, p2, p3)
 
     if p >= alpha:
         return True
@@ -69,7 +77,7 @@ def germline_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha):
 #    return True
 
 
-def filter_genotypes():
+def filter_calls():
     parser = argparse.ArgumentParser( description='Set genotypes based on DP4 scores')
     parser.add_argument('-i', '--input', type=argparse.FileType('r'), default=sys.stdin)
     parser.add_argument('-o', '--output', type=argparse.FileType('w'), default=sys.stdout)
@@ -99,11 +107,13 @@ def filter_genotypes():
             record.FILTER += ['NOTSEEN']
         if reject_from_strandbias(tumour_reads, tumour_evidence, args.strandbias):
             record.FILTER += ['STRANDBIAS']
-        if not(normal_reads == 0 or tumour_reads == 0) and germline_evidence(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
+        if not(normal_reads == 0 or tumour_reads == 0) and germline_hom_het(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
             record.FILTER += ['GERMLINE']
+        elif not(normal_reads == 0 or tumour_reads == 0) and reject_from_normal_evidence(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
+            record.FILTER += ['NORMALEVIDENCE']
         if len(record.FILTER) == 0:
             record.FILTER = ['PASS']
         vcf_writer.write_record(record)
 
 if __name__ == "__main__":
-    filter_genotypes()
+    filter_calls()

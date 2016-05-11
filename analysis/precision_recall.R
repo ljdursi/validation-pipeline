@@ -1,20 +1,3 @@
-derived <- c("union", "intersect2", "intersect3")
-
-snv_callers <- c("adiscan", "broad_mutect", "dkfz", "lohcomplete", "mda_hgsc_gatk_muse", "oicr_bl", "oicr_sga", "sanger", "smufin", "wustl")
-snv_callers_plus_derived <- c(snv_callers, derived)
-snv_derived <- c(rep(FALSE, length(snv_callers)), rep(TRUE, length(derived)))
-
-indel_callers <- c("broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga", "sanger", "smufin", "wustl")
-indel_callers_plus_derived <- c(indel_callers, derived)
-indel_derived <- c(rep(FALSE, length(indel_callers)), rep(TRUE, length(derived)))
-
-sv_callers <- c("broad_merged", "destruct", "embl_delly", "novobreak", "oicr_bl", "sanger", "smufin", "wustl")
-sv_callers_plus_derived <- c(sv_callers, derived)
-sv_derived <- c(rep(FALSE, length(sv_callers)), rep(TRUE, length(derived)))
-
-core_callers_formula <- "validate_true ~ broad_mutect + dkfz + sanger + wgs_tvaf + wgs_nvaf"
-
-
 #
 # raw accuracies, not taking into account the selection procedure
 #

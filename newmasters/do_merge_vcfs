@@ -15,6 +15,7 @@ function rename {
         -e 's/\.mda_hgsc_gatk_muse\.[0-9]*/mda_hgsc_gatk_muse/g' \
         -e 's/\.adiscan\.[0-9]*/adiscan/g' \
         -e 's/\.lohcomplete\.[0-9]*/lohcomplete/g' \
+        -e 's/\.novobreak\.[0-9]*/novobreak/g' \
         -e 's/\.oicr_sga\.[0-9]*/oicr_sga/g' \
         -e 's/tmp\.oicr_bl/oicr_bl/g' \
         -e 's/\.smufin\.[0-9]*/smufin/g' \

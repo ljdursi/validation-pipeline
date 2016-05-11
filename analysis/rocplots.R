@@ -1,17 +1,18 @@
 modelROC <- function(data, model, allcalls, corrected=TRUE) {
-  vals <- (5:45)/50
-  test.prediction <- predict(model, newdata=data)
-  allcalls.prediction <- predict(model, newdata=allcalls)
-  
-  test.df <- data.frame(concordance=data$concordance, sample=data$sample, model=as.vector(test.prediction), validate_true=data$validate_true)
-  allcalls.df <- data.frame(concordance=allcalls$concordance, sample=allcalls$sample, model=as.vector(allcalls.prediction))
+  vals <- (1:49)/50
 
+  test.df <- data.frame(concordance=data$concordance, sample=data$sample, model_probs=data[[model]], validate_true=data$validate_true)
+  allcalls.df <- data.frame(concordance=allcalls$concordance, sample=allcalls$sample, model_probs=allcalls[[model]])
+  
+  test.df <- filter(test.df, !is.na(model_probs))
+  allcalls.df <- filter(test.df, !is.na(model_probs))
+  
   accuracy.fun <- corrected.accuracies
   if (!corrected)
     accuracy.fun <- uncorrected.accuracies
   results <- lapply(vals, function(x) {
-                            test.df$model <- as.vector(test.prediction > x);
-                            allcalls.df$model <- as.vector(allcalls.prediction > x);
+                            test.df$model <- as.vector(test.df$model_probs > x);
+                            allcalls.df$model <- as.vector(allcalls.df$model_probs > x);
                             df <- accuracy.fun(test.df, allcalls.df, "model");
                             df$thresh <- x;
                             return(df)})
@@ -24,7 +25,6 @@ library(ggplot2)
 
 rocplot <- function(data, allcalls, callers, modelcallers, derived, title, 
                     xlim=c(0,1), ylim=c(0,1), include.models=TRUE, ntrials=10) {
-  
   # model callers are callers which have not 0/1 T/F but floating point; 
   # ROC(ish) plots are made for those
   
@@ -41,7 +41,7 @@ rocplot <- function(data, allcalls, callers, modelcallers, derived, title,
   if (include.models) {
     allmodels <- data.frame()
     for (i in 1:length(modelcallers)) {
-      results <- modelROC(data, data[[modelcallers[i]]], allcalls)
+      results <- modelROC(data, modelcallers[i], allcalls)
       results$model <- modelcallers[i]
       allmodels <- rbind(allmodels, results)
     }
