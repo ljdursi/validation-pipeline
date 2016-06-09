@@ -224,23 +224,41 @@ add.newcaller.as.feature <- function(snvs, snv_calls, newcaller='new_muse', file
 }
 
 library(reshape2)
-library(ggplot2)
+#library(ggplot2)
 
-boxplots <- function(snvs, snv_calls, callers=c('broad_mutect','dkfz','sanger'), samples=levels(snvs$sample)) {
+boxplots <- function(snvs, snv_calls, callers=c('broad_mutect','dkfz','sanger'), samples=levels(snvs$sample), title="Distribution of Per-Sample Accuracies") {
   result.list <- lapply(callers, function(x) corrected.accuracies(snvs, snv_calls, x, combine=c('concordance')))
   results <- do.call(rbind, result.list)
   results <- results[results$sample %in% samples,]
   results <- melt(results,id=c('caller','sample'))
   results = results[results$value != 0,]
+  
+  print(filter(results, value < 0.25))
+  
   ggplot(results) + geom_boxplot(aes(x=caller,y=value,color=caller)) + 
-    facet_grid(variable ~ .) + ggtitle("Distribution of Per-Sample Accuracies") + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), text = element_text(size=20))
+    facet_grid(variable ~ .) + ggtitle(title) + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), text = element_text(size=20)) + ylab('Accuracy')
 }
 
 require(dplyr)
 
+calc_weights <- function (validated_calls, all_calls) {
+  # calculate the weights for each validated call
+   
+  validated_counts <- validated_calls %>% dplyr::select(concordance, sample) %>% group_by(concordance, sample) %>% summarise(nvalidated=n())
+  called_counts <- all_calls %>% dplyr::select(concordance, sample) %>% group_by(concordance, sample) %>% summarise(ncalled=n())
+  allcounts <- merge(validated_counts, called_counts, all=TRUE)
+  allcounts[is.na(allcounts)] <- 0
+  allcounts$weight <- allcounts$ncalled/(allcounts$nvalidated+1.)
+  allcounts <- dplyr::select(allcounts, concordance, sample, weight)
+    
+  validated_calls <- merge(validated_calls, allcounts, by=c("concordance","sample"), all.x=TRUE)
+
+  return(validated_calls)
+}
+
 applymodel <- function(snvs, snv_calls, learn_model, predict_model, formula, model_name, 
-                       samples=levels(droplevels(snvs$sample)), seed=NA, n_at_a_time=10) {
+                       samples=levels(droplevels(snvs$sample)), seed=NA, n_at_a_time=13) {
   if (!is.na(seed)) set.seed(seed)
   
   shuffled_samples <- sample(samples)
@@ -256,16 +274,8 @@ applymodel <- function(snvs, snv_calls, learn_model, predict_model, formula, mod
   copy_snv_calls[[model_name]] <- 0
   copy_snvs$sample_bin <- 0
   
-  # calculate the weights for each validated call
-  if (!"weight" %in% colnames(copy_snvs)) {    
-    validated_counts <- snvs %>% dplyr::select(concordance, sample) %>% group_by(concordance, sample) %>% summarise(nvalidated=n())
-    called_counts <- snv_calls %>% dplyr::select(concordance, sample) %>% group_by(concordance, sample) %>% summarise(ncalled=n())
-    allcounts <- merge(validated_counts, called_counts, all=TRUE)
-    allcounts[is.na(allcounts)] <- 0
-    allcounts$weight <- allcounts$ncalled/(allcounts$nvalidated+1.)
-    allcounts <- dplyr::select(allcounts, concordance, sample, weight)
-    
-    copy_snvs <- merge(copy_snvs, allcounts, by=c("concordance","sample"), all.x=TRUE)
+  if (!"weight" %in% names(copy_snvs)) {
+    copy_snvs <- calc_weights(copy_snvs, snv_calls)
   }
   
   for (i in 1:length(shuffled_samples)) {
@@ -273,6 +283,7 @@ applymodel <- function(snvs, snv_calls, learn_model, predict_model, formula, mod
     copy_snv_calls$sample_bin[copy_snv_calls$sample == shuffled_samples[i]] <-sample_bin[i]
   }
   
+  models <- list()
   for (i in 0:max(sample_bin)) {
     print(paste(i+1,"of",max(sample_bin)+1))
     train_snvs <- filter(copy_snvs, sample_bin != i)
@@ -281,9 +292,9 @@ applymodel <- function(snvs, snv_calls, learn_model, predict_model, formula, mod
     test_snv_calls <- filter(copy_snv_calls, sample_bin == i)
     
     # learn on the train and apply to test
-    model <- learn_model(formula, train_snvs)    
-    test_snv_calls_predictions <- predict_model(model, formula, test_snv_calls)
-    test_snvs_predictions <- predict_model(model, formula, test_snvs)
+    models[[i+1]] <- learn_model(formula, train_snvs)    
+    test_snv_calls_predictions <- predict_model(models[[i+1]], formula, test_snv_calls)
+    test_snvs_predictions <- predict_model(models[[i+1]], formula, test_snvs)
     
     copy_snvs[[model_name]][test_snvs$row] <- test_snvs_predictions
     copy_snv_calls[[model_name]][test_snv_calls$row] <- test_snv_calls_predictions
@@ -291,7 +302,12 @@ applymodel <- function(snvs, snv_calls, learn_model, predict_model, formula, mod
   copy_snv_calls[[model_name]][copy_snv_calls$union == 0] <- 0
   copy_snvs[[model_name]][copy_snvs$union == 0] <- 0
   
-  return(list(snv_calls=copy_snv_calls, snvs=copy_snvs))
+#  if ("broad_snowman" %in% names(copy_snvs)) {
+#    copy_snv_calls[[model_name]][copy_snv_calls$intersect2 == 0 & copy_snv_calls$broad_snowman == 1] <- 0
+#    copy_snvs[[model_name]][copy_snvs$intersect2 == 0 & copy_snvs$broad_snowman == 1] <- 0
+#  }
+  
+  return(list(snv_calls=copy_snv_calls, snvs=copy_snvs, models=models))
 }
 
 require(glmnet)
@@ -299,21 +315,30 @@ require(party)
 require(kernlab)
 require(randomForest)
 
-svmlearn <- function(formula, data) { 
-  variables <-  unique(sort(unlist(strsplit(gsub("[+:|()*]","",as.character(formula)[[3]])," "))))
-  variables <- c(variables[-1], "validate_true")
-  
+valid.rows <- function(data) {
+  return(complete.cases(data))
+}
+
+only.required.columns <- function(formula, data, include.answer=TRUE, answer="validate_true") {
+  variables <- unique(sort(unlist(strsplit(gsub("[+:|()*]"," ",as.character(formula)[[3]])," "))))
+  variables <- variables[-1]
+  if (include.answer) {
+    variables <- c(answer, variables)
+  }
   subsetdata <- data[variables]
-  myrows <- complete.cases(subsetdata)
+#  print(summary(subsetdata))
+  return(subsetdata)
+}
+
+svmlearn <- function(formula, data) { 
+  subsetdata <- only.required.columns(formula, data)
+  myrows <- valid.rows(subsetdata)
   ksvm(formula, subsetdata[myrows,], type="C-svc", prob.model=TRUE) 
 }
 
 svmpredict <- function(model, formula, data) { 
-  variables <-  unique(sort(unlist(strsplit(gsub("[+:|()*]","",as.character(formula)[[3]])," "))))
-  variables <- c(variables[-1], "validate_true")
-  
-  subsetdata <- data[variables]
-  myrows <- complete.cases(subsetdata)
+  subsetdata <- only.required.columns(formula, data, FALSE)
+  myrows <- valid.rows(subsetdata)
   
   results <- rep(0,nrow(data))
   prediction <- predict(model, data, type="probabilities")[,2]
@@ -323,20 +348,15 @@ svmpredict <- function(model, formula, data) {
 }
 
 randomforestlearn <- function(formula, data) { 
-  variables <-  unique(sort(unlist(strsplit(gsub("[+:|()*]","",as.character(formula)[[3]])," "))))
-  variables <- c(variables[-1], "validate_true")
-  
-  subsetdata <- data[variables]
-  myrows <- complete.cases(subsetdata)
+  subsetdata <- only.required.columns(formula, data)
+  subsetdata$weight <- data$weight
+  myrows <- valid.rows(subsetdata)
   randomForest(formula, subsetdata[myrows,], ntree=250)
 }
 
 randomforestpredict <- function(model, formula, data) { 
-  variables <-  unique(sort(unlist(strsplit(gsub("[+:|()*]","",as.character(formula)[[3]])," "))))
-  variables <- c(variables[-1], "validate_true")
-  
-  subsetdata <- data[variables]
-  myrows <- complete.cases(subsetdata)
+  subsetdata <- only.required.columns(formula, data, FALSE)
+  myrows <- valid.rows(subsetdata)
   
   results <- rep(0,nrow(data))
   prediction <- predict(model, subsetdata[myrows,], type="prob")[,2]
@@ -353,29 +373,26 @@ glmlearn <- function(formula, data) {
 glmpredict <- function(model, formula, data) { predict(model, data, type="response") }
 
 ctreelearn <- function(formula, data) { ctree(formula, newdata=data, weights=data$weight) }
-ctreepredict <- function(model, formula, data) { predict(model, newdata=data) }
+ctreepredict <- function(model, formula, data) { Predict(model, newdata=data) }
 
 glmnetlearn <- function(formula, data) {
-  variables <-  unique(sort(unlist(strsplit(gsub("[+:|()*]","",as.character(formula)[[3]])," "))))
-  variables <- c(variables[-1], "validate_true", "weight")
-  
-  subsetdata <- data[variables]
-  myrows <- complete.cases(subsetdata)
+  subsetdata <- only.required.columns(formula, data)
+  subsetdata$weight <- data$weight
+  myrows <- valid.rows(subsetdata)
   X <- model.matrix(formula, data=subsetdata[myrows,])
   y <- subsetdata$validate_true[myrows]
+ 
   cv.glmnet(X, y, weights=subsetdata$weight[myrows], family="binomial", foldid=as.integer(droplevels(data$sample[myrows])))
 }
 
 glmnetpredict <- function(model, formula, data) {
-  variables <-  unique(sort(unlist(strsplit(gsub("[+:|()*]","",as.character(formula)[[3]])," "))))
-  variables <- c(variables[-1], "validate_true")
-
-  subsetdata <- data[variables]
-  myrows <- complete.cases(subsetdata)
-
+  subsetdata <- only.required.columns(formula, data, FALSE)
+  subsetdata$validate_true <- FALSE
+  myrows <- valid.rows(subsetdata)
+  
   results <- rep(0,nrow(data))
   X <- model.matrix(formula, data=subsetdata[myrows,])
-  prediction <- predict(model, X, type="response", s="lambda.1se")[,1]
+  prediction <- predict.cv.glmnet(model, X, type="response", s="lambda.1se")[,1]
 
   results[myrows] <- prediction
   return(results)
@@ -385,32 +402,42 @@ binarize <- function(data, thresh=0.5) {
     ifelse(data > thresh, 1, 0)
 }
 
+binarize_both <- function(l, probs, caller, thresh=0.5) {
+  l$snvs[[caller]] <- binarize(l$snvs[[probs]], thresh)
+  l$snv_calls[[caller]] <- binarize(l$snv_calls[[probs]], thresh)
+  return(l)
+}
 
 simple_indel_models <- function(validated.calls, all.calls, seed=1, threshold=0.5) {
   
   print("Logistic Regression")
   l <- applymodel(validated.calls, all.calls, glmlearn, glmpredict, 
-                as.formula("validate_true ~ repeat_count +  wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + gencode + cosmic + dbsnp + broad_mutect + dkfz + sanger + intersect2 + intersect3"), 
-                "logistic_regression", seed=1)
+ #                as.formula("validate_true ~ repeat_count +  wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + broad_snowman*dkfz*sanger"), 
+                  as.formula("validate_true ~ repeat_count +  wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + dkfz*sanger*smufin*broad_snowman"), 
+                 "logistic_regression", seed=1)
   
   print("Decision Tree")
   l <- applymodel(l$snvs, l$snv_calls, ctree, ctreepredict, 
-                as.formula("validate_true ~  repeat_count + wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + gencode + cosmic + dbsnp + broad_mutect + dkfz + sanger + intersect2 + intersect3"), 
-                "decision_tree", seed=1)
+#                 as.formula("validate_true ~  repeat_count + wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes+ broad_snowman*dkfz*sanger"), 
+                  as.formula("validate_true ~ repeat_count +  wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + dkfz*sanger*smufin*broad_snowman"), 
+                  "decision_tree", seed=1)
   
   print("SVM")
   l <- applymodel(l$snvs, l$snv_calls, svmlearn, svmpredict, 
-                  as.formula("validate_true ~  repeat_count + wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + gencode + cosmic + dbsnp + broad_mutect + dkfz + sanger + intersect2 + intersect3"), 
+#                  as.formula("validate_true ~  repeat_count + wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes+ broad_snowman*dkfz*sanger"), 
+                  as.formula("validate_true ~ repeat_count +  wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + dkfz*sanger*smufin*broad_snowman"), 
                   "svm_prob", seed=1)
   
   print("Stacked Logistic Regression")
   l <- applymodel(l$snvs, l$snv_calls, glmnetlearn, glmnetpredict, 
-                   as.formula("validate_true ~ (broad_mutect + dkfz + sanger)*(wgs_nvaf + wgs_tvaf  + wgs_nvardepth + wgs_tvardepth + varlen + gencode + cosmic + dbsnp)"), 
+#                  as.formula("validate_true ~ (broad_snowman + dkfz + sanger)*(wgs_nvaf + wgs_tvaf  + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + wgs_tvaf*wgs_tvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count)"), 
+                   as.formula("validate_true ~ (dkfz + sanger + smufin)*(wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count + broad_snowman)"), 
                    "stacked_logistic_regression", seed=1) 
   
   print("RandomForest")
   l <- applymodel(l$snvs, l$snv_calls, randomforestlearn, randomforestpredict, 
-                  as.formula("as.factor(validate_true) ~  repeat_count + wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + gencode + cosmic + dbsnp + broad_mutect + dkfz + sanger + intersect2 + intersect3"), 
+                  as.formula("as.factor(validate_true) ~  repeat_count + wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic*dbsnp + thousand_genomes+ dkfz*sanger*broad_snowman*smufin"), 
+#                  as.formula("as.factor(validate_true) ~  repeat_count + wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic*dbsnp + thousand_genomes+ broad_snowman*dkfz*sanger"), 
                   "random_forest", seed=1) 
 
   l$snvs$logisticRegression <- binarize(l$snvs$logistic_regression, thresh=threshold)
@@ -430,6 +457,78 @@ simple_indel_models <- function(validated.calls, all.calls, seed=1, threshold=0.
   
   l$snvs$randomForest <- binarize(l$snvs$random_forest, thresh=threshold)
   l$snv_calls$randomForest <- binarize(l$snv_calls$random_forest, thresh=threshold)
+  return(l)
+}
+
+vary_ncallers_tree <- function(validated.calls, all.calls, seed=1, threshold=0.5) {
+  
+  print("Two")
+  l <- applymodel(validated.calls, all.calls, ctree, ctreepredict,  
+                  as.formula("validate_true ~ (dkfz*sanger + wgs_tvaf*wgs_tvardepth*wgs_tdepth + wgs_nvaf*wgs_nvardepth*wgs_ndepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_masker + repeat_count)"), 
+                  "two_callers", seed=1) 
+  l <- binarize_both(l, "two_callers", "twoCallers", threshold)
+  
+  print("All four")
+  l <- applymodel(l$snvs, l$snv_calls, ctree, ctreepredict, 
+                  as.formula("validate_true ~ (dkfz*sanger*broad_snowman*smufin + wgs_tvaf*wgs_tvardepth*wgs_tdepth + wgs_nvaf*wgs_nvardepth*wgs_ndepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_masker + repeat_count)"), 
+                  "four_callers", seed=1) 
+  l <- binarize_both(l, "four_callers", "fourCallers", threshold)
+  
+  print("two + smufin")
+  l <- applymodel(l$snvs, l$snv_calls, ctree, ctreepredict, 
+                  as.formula("validate_true ~ (dkfz*sanger*smufin + wgs_tvaf*wgs_tvardepth*wgs_tdepth + wgs_nvaf*wgs_nvardepth*wgs_ndepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_masker + repeat_count)"), 
+                  "two_plus_smufin", seed=1) 
+  l <- binarize_both(l, "two_plus_smufin", 'twoPlusSmufin', threshold)
+
+  print("two + snowman")
+  l <- applymodel(l$snvs, l$snv_calls, ctree, ctreepredict, 
+                  as.formula("validate_true ~ (dkfz*sanger*broad_snowman + wgs_tvaf*wgs_tvardepth*wgs_tdepth + wgs_nvaf*wgs_nvardepth*wgs_ndepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_masker + repeat_count)"), 
+                  "two_plus_snowman_caller", seed=1) 
+  l <- binarize_both(l, "two_plus_snowman_caller", 'twoPlusSnowmanCaller', threshold)
+  
+  l$snv_calls$two_plus <- ifelse(l$snv_calls$sanger + l$snv_calls$broad_snowman + l$snv_calls$dkfz + l$snv_calls$smufin >= 2, 1, 0)
+  l$snvs$two_plus <- ifelse(l$snvs$sanger + l$snvs$broad_mutect + l$snvs$dkfz + l$snvs$smufin >= 2, 1, 0)
+
+  return(l)
+}
+
+vary_ncallers <- function(validated.calls, all.calls, seed=1, threshold=0.5) {
+  
+  print("Two")
+  l <- applymodel(validated.calls, all.calls, glmnetlearn, glmnetpredict, 
+                  as.formula("validate_true ~ (dkfz + sanger)*(wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count)"), 
+                  "two_callers", seed=1) 
+  l <- binarize_both(l, "two_callers", "twoCallers", threshold)
+  
+  print("All four")
+  l <- applymodel(l$snvs, l$snv_calls, glmnetlearn, glmnetpredict, 
+                  as.formula("validate_true ~ (dkfz + sanger + smufin)*(wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count + broad_snowman)"), 
+                  "four_callers", seed=1) 
+  l <- binarize_both(l, "four_callers", "fourCallers", threshold)
+  
+  print("two + smufin")
+  l <- applymodel(l$snvs, l$snv_calls, glmnetlearn, glmnetpredict, 
+                  as.formula("validate_true ~ (dkfz + sanger + smufin)*(wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count)"), 
+                  "two_plus_smufin", seed=1) 
+  l <- binarize_both(l, "two_plus_smufin", 'twoPlusSmufin', threshold)
+  
+  print("two + snowman")
+  l <- applymodel(l$snvs, l$snv_calls, glmnetlearn, glmnetpredict, 
+                  as.formula("validate_true ~ (dkfz + sanger)*(wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count + broad_snowman)"), 
+                  "two_plus_snowman_feature", seed=1) 
+  l <- binarize_both(l, "two_plus_snowman_feature", 'twoPlusSnowmanFeature', threshold)
+  
+  print("two + snowman caller")
+  l <- applymodel(l$snvs, l$snv_calls, glmnetlearn, glmnetpredict, 
+                  #                  as.formula("validate_true ~ (broad_snowman + dkfz + sanger)*(wgs_nvaf + wgs_tvaf  + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + wgs_tvaf*wgs_tvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count)"), 
+                  as.formula("validate_true ~ (dkfz + sanger + broad_snowman)*(wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count)"), 
+                  "two_plus_snowman_caller", seed=1) 
+  l <- binarize_both(l, "two_plus_snowman_caller", 'twoPlusSnowmanCaller', threshold)
+  
+  
+  l$snv_calls$two_plus <- ifelse(l$snv_calls$sanger + l$snv_calls$broad_snowman + l$snv_calls$dkfz + l$snv_calls$smufin >= 2, 1, 0)
+  l$snvs$two_plus <- ifelse(l$snvs$sanger + l$snvs$broad_mutect + l$snvs$dkfz + l$snvs$smufin >= 2, 1, 0)
+  
   return(l)
 }
 
@@ -477,10 +576,14 @@ simple_snv_models <- function(validated.calls, all.calls, seed=1, threshold=0.5)
   return(l)
 }
 
+indel_model_callers <- c('broad_snowman','dkfz', 'sanger', 'union', 'intersect2', 'two_plus', 'intersect3',
+                   'logisticRegression', 'decisionTree'
+                   ,'stackedLogisticRegression', 'svm', 'randomForest')
+
 doboxplot <- function(l, callers=c('broad_mutect','dkfz', 'sanger', 'union', 'intersect2', 'intersect3', 'two_plus',
                                  'logisticRegression', 'decisionTree'
-                                 ,'stackedLogisticRegression', 'svm', 'randomForest')) {
-  boxplots(l$snvs, l$snv_calls, callers)
+                                 ,'stackedLogisticRegression', 'svm', 'randomForest'), ...) {
+  boxplots(l$snvs, l$snv_calls, callers, ...)
 }
 
 dovafplot <- function(l, variant="SNV", callers=c('union', 'intersect2', 'intersect3', 'two_plus', 'logisticRegression', 'stackedLogisticRegression', 'decisionTree', 'svm', 'randomForest')) {
