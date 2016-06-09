@@ -41,6 +41,9 @@ def parse_combined(files, output, callers, excise=False):
         """ Parse a comma-delimited list of integers and return the sum"""
         return sum([int(x) for x in comma_delimited_string.split(',')])
 
+    def one_if_present(value):
+        return 1 if len(value) > 0 else 0
+
     def binarize(number):
         """ Return 0 if the string is integer 0, or 1 otherwise """
         return 0 if int(number) == 0 else 1
@@ -61,10 +64,12 @@ def parse_combined(files, output, callers, excise=False):
 
     fielddict = {'varlen':('varlen', int_or_NA),
                  'repeat_masker':('repeat_masker', binarize),
-                 'cosmic':('cosmic', binarize),
-                 'dbsnp':('dbsnp', binarize),
-                 'gencode_prioritized':('gencode', str),
+                 'cosmic':('cosmic', one_if_present),
+                 'thousand_genomes':('thousand_genomes', one_if_present),
+                 'dbsnp':('dbsnp', one_if_present),
+                 'gencode_prioritized':('gencode', one_if_present),
                  'wgs_NormalReads':('wgs_ndepth', int_or_NA),
+                 'wgs_NormalTotalDepth':('wgs_ndepth', int_or_NA),
                  'wgs_TumorReads':('wgs_tdepth', int_or_NA),
                  'wgs_TumorAvgVarBaseQ':('wgs_tvar_avgbaseq', float_or_NA),
                  'wgs_TumorEvidenceReads':('wgs_tvardepth', sum_ints),
@@ -76,7 +81,8 @@ def parse_combined(files, output, callers, excise=False):
                  'wgs_NormalVAF':('wgs_nvaf', float_or_NA),
                  'wgs_TumorVAF':('wgs_tvaf', float_or_NA),
                  'wgs_RepeatRefCount':('repeat_count', int_or_NA),
-                 'muse_feature':('muse_feature', int_or_NA)
+                 'muse_feature':('muse_feature', int_or_NA),
+                 'TSPLIT':('tsplit', int_or_NA)
                  }
 
     headerfields = headerfields + [x for x, _ in fielddict.values()] +  callers
@@ -91,7 +97,6 @@ def parse_combined(files, output, callers, excise=False):
 
             itemdict = collections.defaultdict(str)
             items = line.split()
-            callers_found = False
             validation_tumour_depth, validation_tumour_var_depth = None, None
             validation_normal_depth, validation_normal_var_depth = None, None
 
@@ -101,6 +106,8 @@ def parse_combined(files, output, callers, excise=False):
             itemdict['indel_dist'] = "NA"
             if 'GERMLINE' in itemdict['status']:
                 itemdict['status'] = 'GERMLINE'
+            if 'NORMALEVIDENCE' in itemdict['status']:
+                itemdict['status'] = 'NORMALEVIDENCE'
             if 'NOTSEEN' in itemdict['status']:
                 itemdict['status'] = 'NOTSEEN'
 
@@ -121,9 +128,8 @@ def parse_combined(files, output, callers, excise=False):
                         print("line = <"+line+"> ", file=sys.stderr)
                         print(e, file=sys.stderr)
 
-                # Deal with the callers: only do this once
-                if key == 'Callers' and not callers_found:
-                    callers_found = True
+                # Deal with the callers: Take the last one
+                if key == 'Callers':
                     for caller in callers:
                         if caller in field:
                             itemdict[caller] = '1'
@@ -156,7 +162,7 @@ def main():
     snv_callers = ['adiscan', 'broad_mutect', 'dkfz', 'lohcomplete',
                    'mda_hgsc_gatk_muse', 'oicr_bl', 'oicr_sga', 'sanger',
                    'smufin', 'wustl']
-    indel_callers = ['broad_mutect', 'crg_clindel', 'dkfz', 'novobreak',
+    indel_callers = ['broad_snowman', 'broad_mutect', 'crg_clindel', 'dkfz', 'novobreak',
                      'oicr_sga', 'sanger', 'smufin', 'wustl']
     sv_callers = ['broad_merged', 'destruct', 'embl_delly', 'novobreak',
                   'oicr_bl', 'sanger', 'smufin', 'wustl']
