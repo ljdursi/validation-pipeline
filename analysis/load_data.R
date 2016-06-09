@@ -8,7 +8,17 @@ library(dplyr)
 #  - union/intersect2/intersect3 : derived callers from the core pipelines
 #  - binned values for some continuous featuers: wgs_tvaf, homopolymer count, indel size
 #
-ingest_csv <- function(filename, callers, keep.lowdepth=FALSE) {
+
+find_columns <- function(names, desired_columns) {
+  candidate_columns <- sapply(desired_columns, function(x) grep(x, names))
+  cols <- c()
+  for (col in candidate_columns) {
+    cols<- c(cols, col)
+  }
+  return(cols)
+}
+
+ingest_csv <- function(filename, callers, keep.lowdepth=FALSE, core_callers=c('broad_mutect', 'dkfz', 'sanger')) {
   data <- read.csv(filename)
   if (!keep.lowdepth) {
     data <- filter(data, status != "LOWDEPTH")
@@ -16,7 +26,8 @@ ingest_csv <- function(filename, callers, keep.lowdepth=FALSE) {
   }
   data$repeat_count <- as.integer(data$repeat_count)
   
-  caller_columns <- sapply(callers, function(x) grep(x, names(data)))
+  caller_columns <- find_columns(names(data), callers)
+
   data$concordance <- rowSums(data[,caller_columns])
   data <- filter(data, concordance>0)
   
@@ -29,18 +40,19 @@ ingest_csv <- function(filename, callers, keep.lowdepth=FALSE) {
   data$mnv <- ifelse( nchar(data$ref)>1, 1, 0 )
   data$varlen <- nchar(data$alt) - nchar(data$ref)
   
-  col_names <- names(data)
-  core_callers <- as.vector(na.omit(c(grep("broad",col_names), match("dkfz",col_names), match("embl_delly", col_names), match("sanger",col_names))))
-  ncore <- rowSums(data[,core_callers])
+  core_caller_cols <- find_columns(names(data), core_callers)
+  data$ncore <- rowSums(data[,core_caller_cols])
   
   data$common_sample <- rep(0, nrow(data))
   for (caller in callers) {
-    t <- tapply(data[[caller]], data$sample, FUN=sum)
-    missed.samples <- dimnames(t)[[1]][t==0]
-    seen <- paste0("seenby_",caller)
-    data[[seen]] <- rep(1, nrow(data))
-    data[[seen]][data$sample %in% missed.samples] <- 0
-    data$common_sample <- data$common_sample + data[[seen]]
+    if (caller %in% names(data)) {    
+      t <- tapply(data[[caller]], data$sample, FUN=sum)
+      missed.samples <- dimnames(t)[[1]][t==0]
+      seen <- paste0("seenby_",caller)
+      data[[seen]] <- rep(1, nrow(data))
+      data[[seen]][data$sample %in% missed.samples] <- 0
+      data$common_sample <- data$common_sample + data[[seen]]
+    }
   }
   col_names <- names(data)
   seenby_core_callers <- as.vector(na.omit(c(grep("seenby_broad",col_names), match("seenby_dkfz",col_names), match("seenby_embl_delly", col_names), match("seenby_sanger",col_names))))
@@ -48,14 +60,17 @@ ingest_csv <- function(filename, callers, keep.lowdepth=FALSE) {
   
   data$common_sample <- data$common_sample == length(callers)
   
-  data$union <- ifelse( ncore > 0, 1, 0)
-  data$intersect2 <- ifelse( ncore > 1, 1, 0)
-  data$intersect3 <- ifelse( ncore > 2, 1, 0)
+  data$union <- ifelse( data$ncore > 0, 1, 0)
+  data$intersect2 <- ifelse( data$ncore > 1, 1, 0)
+  data$intersect3 <- ifelse( data$ncore > 2, 1, 0)
   
   data$repeat_masker[is.na(data$repeat_masker)] <- 0
   data$cosmic[is.na(data$cosmic)] <- 0
   data$dbsnp[is.na(data$dbsnp)] <- 0
+  data$thousand_genomes[is.na(data$thousand_genomes)] <- 0
+  data$gencode[is.na(data$gencode)] <- 0
   data$muse_feature[is.na(data$muse_feature)] <- 0
+  data$repeat_count[is.na(data$repeat_count)] <- 0
   
   data$indelsize <- abs(nchar(data$ref) - nchar(data$alt))
   if (max(data$indelsize, na.RM=TRUE) > 1)
@@ -71,7 +86,7 @@ snv_callers <- c("adiscan", "broad_mutect", "dkfz", "lohcomplete", "mda_hgsc_gat
 snv_callers_plus_derived <- c(snv_callers, derived)
 snv_derived <- c(rep(FALSE, length(snv_callers)), rep(TRUE, length(derived)))
 
-indel_callers <- c("broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga", "sanger", "smufin", "wustl")
+indel_callers <- c("broad_snowman", "broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga", "sanger", "smufin", "wustl")
 indel_callers_plus_derived <- c(indel_callers, derived)
 indel_derived <- c(rep(FALSE, length(indel_callers)), rep(TRUE, length(derived)))
 
@@ -81,30 +96,34 @@ sv_derived <- c(rep(FALSE, length(sv_callers)), rep(TRUE, length(derived)))
 
 core_callers_formula <- "validate_true ~ broad_mutect + dkfz + sanger + wgs_tvaf + wgs_nvaf"
 
-array4_indel_calls <- ingest_csv('csvs/newmasters/array4_allcalls_indel.csv', indel_callers)
-array3_indel_calls <- ingest_csv('csvs/newmasters/array3_allcalls_indel.csv', indel_callers)
-array2_indel_calls <- ingest_csv('csvs/newmasters/array2_allcalls_indel.csv', indel_callers)
-array1_indel_calls <- ingest_csv('csvs/newmasters/array1_allcalls_indel.csv', indel_callers)
+dir <- 'csvs/newmasters/'
+core_indel_callers <- c('smufin','dkfz','sanger')
+#core_indel_callers <- c('snowman','dkfz','sanger')
 
-array4_snv_calls <- ingest_csv('csvs/newmasters/array4_allcalls_snv_mnv.csv', snv_callers)
-array3_snv_calls <- ingest_csv('csvs/newmasters/array3_allcalls_snv_mnv.csv', snv_callers)
-array2_snv_calls <- ingest_csv('csvs/newmasters/array2_allcalls_snv_mnv.csv', snv_callers)
-array1_snv_calls <- ingest_csv('csvs/newmasters/array1_allcalls_snv_mnv.csv', snv_callers)
+array4_indel_calls <- ingest_csv(paste0(dir,'array4_allcalls_indel.csv'), indel_callers, core_callers=core_indel_callers)
+array3_indel_calls <- ingest_csv(paste0(dir,'array3_allcalls_indel.csv'), indel_callers, core_callers=core_indel_callers)
+array2_indel_calls <- ingest_csv(paste0(dir,'array2_allcalls_indel.csv'), indel_callers, core_callers=core_indel_callers)
+array1_indel_calls <- ingest_csv(paste0(dir,'array1_allcalls_indel.csv'), indel_callers, core_callers=core_indel_callers)
+
+array4_snv_calls <- ingest_csv(paste0(dir,'array4_allcalls_snv_mnv.csv'), snv_callers)
+array3_snv_calls <- ingest_csv(paste0(dir,'array3_allcalls_snv_mnv.csv'), snv_callers)
+array2_snv_calls <- ingest_csv(paste0(dir,'array2_allcalls_snv_mnv.csv'), snv_callers)
+array1_snv_calls <- ingest_csv(paste0(dir,'array1_allcalls_snv_mnv.csv'), snv_callers)
 
 #array4_sv_calls <- ingest_csv('csvs/newmasters/array4_allcalls_sv.csv', sv_callers)
 #array3_sv_calls <- ingest_csv('csvs/newmasters/array3_allcalls_sv.csv', sv_callers)
 #array2_sv_calls <- ingest_csv('csvs/newmasters/array2_allcalls_sv.csv', sv_callers)
 #array1_sv_calls <- ingest_csv('csvs/newmasters/array1_allcalls_sv.csv', sv_callers)
 
-array1_indels <- ingest_csv('csvs/newmasters/array1_indel.csv', indel_callers)
-array2_indels <- ingest_csv('csvs/newmasters/array2_indel.csv', indel_callers)
-array3_indels <- ingest_csv('csvs/newmasters/array3_indel.csv', indel_callers)
-array4_indels <- ingest_csv('csvs/newmasters/array4_indel.csv', indel_callers)
+array1_indels <- ingest_csv(paste0(dir,'array1_indel.csv'), indel_callers, core_callers=core_indel_callers)
+array2_indels <- ingest_csv(paste0(dir,'array2_indel.csv'), indel_callers, core_callers=core_indel_callers)
+array3_indels <- ingest_csv(paste0(dir,'array3_indel.csv'), indel_callers, core_callers=core_indel_callers)
+array4_indels <- ingest_csv(paste0(dir,'array4_indel.csv'), indel_callers, core_callers=core_indel_callers)
 
-array1_snvs <- ingest_csv('csvs/newmasters/array1_snv_mnv.csv', snv_callers)
-array2_snvs <- ingest_csv('csvs/newmasters/array2_snv_mnv.csv', snv_callers)
-array3_snvs <- ingest_csv('csvs/newmasters/array3_snv_mnv.csv', snv_callers)
-array4_snvs <- ingest_csv('csvs/newmasters/array4_snv_mnv.csv', snv_callers)
+array1_snvs <- ingest_csv(paste0(dir,'array1_snv_mnv.csv'), snv_callers)
+array2_snvs <- ingest_csv(paste0(dir,'array2_snv_mnv.csv'), snv_callers)
+array3_snvs <- ingest_csv(paste0(dir,'array3_snv_mnv.csv'), snv_callers)
+array4_snvs <- ingest_csv(paste0(dir,'array4_snv_mnv.csv'), snv_callers)
 
 #array4_svs <- ingest_csv('csvs/newmasters/array4_sv.csv', sv_callers)
 #array3_svs <- ingest_csv('csvs/newmasters/array3_sv.csv', sv_callers)
@@ -125,11 +144,12 @@ indels$wgs_tvar_avgbaseposn <- 0
 indel_calls$wgs_tvar_avgbaseq <- 0
 indel_calls$wgs_tvar_avgbaseposn <- 0
 
-bad_indel_samples <- c("a34f1dba-5758-45c8-b825-1c888d6c4c13")
+bad_indel_samples <- c("a34f1dba-5758-45c8-b825-1c888d6c4c13","ae1fd34f-6a0f-43db-8edb-c329ccf3ebae")
 indels <- filter(indels, !sample %in% bad_indel_samples)
 indel_calls <- filter(indel_calls, !sample %in% bad_indel_samples)
 
-common_and_unmasked <- function(data) filter(data, common_sample==TRUE, repeat_masker==0)
+common_and_unmasked <- function(data) filter(data, repeat_masker==0)
+
 few_repeats <- function(data, thresh=5) filter(data, repeat_count < thresh)
 
 snvs <- common_and_unmasked(snvs)
@@ -137,10 +157,10 @@ indels <- common_and_unmasked(indels)
 snv_calls <- common_and_unmasked(snv_calls)
 indel_calls <- common_and_unmasked(indel_calls)
 
-snvs$gencode <- as.factor(ifelse(snvs$gencode=="", "", "gene"))
-indels$gencode <- as.factor(ifelse(indels$gencode=="", "", "gene"))
-snv_calls$gencode <- as.factor(ifelse(snv_calls$gencode=="", "", "gene"))
-indel_calls$gencode <- as.factor(ifelse(indel_calls$gencode=="", "", "gene"))
+snvs$gencode <- ifelse(snvs$gencode=="", 0, 1)
+indels$gencode <- ifelse(indels$gencode=="", 0, 1)
+snv_calls$gencode <- ifelse(snv_calls$gencode=="", 0, 1)
+indel_calls$gencode <- ifelse(indel_calls$gencode=="", 0, 1)
 
 snv_core_calls <- filter(snv_calls, union==1) 
 snvs_core <- filter(snvs, union==1) 
