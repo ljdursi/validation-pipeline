@@ -60,10 +60,10 @@ def reject_from_normal_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha)
     if phat_normal >= phat_tumour/2:
         return True
 
-    # consistent w/ phat_tumour, w/in factor of 3?  True
+    # consistent w/ phat_tumour, w/in factor of 2?  True
     p1 = scipy.stats.binom_test(sum(n_evidence), n_depth, phat_tumour) 
-    p2 = scipy.stats.binom_test(sum(n_evidence), n_depth, phat_tumour/3)
-    p3 = scipy.stats.binom_test(sum(n_evidence), n_depth, min(phat_tumour*3,1.)) 
+    p2 = scipy.stats.binom_test(sum(n_evidence), n_depth, phat_tumour/2)
+    p3 = scipy.stats.binom_test(sum(n_evidence), n_depth, min(phat_tumour*2,1.)) 
     p = max(p1, p2, p3)
 
     if p >= alpha:
