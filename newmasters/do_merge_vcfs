@@ -1,10 +1,12 @@
 #!/bin/bash
 
 module load gcc/4.8.1 python/2.7.2 openblas python-packages/2
+module load bcftools/1.1
 
 readonly PROCESSED=/.mounts/labs/simpsonlab/users/jdursi/pcawg-validation-63/processed/
 readonly NEWDATA=./processed
 readonly OUTPUT=./merged
+readonly REFERENCE=/oicr/data/pancanxfer/validation/reference/bwa-0.6.2/genome.fa
 
 function rename {
     sed -e "s/${sample}//g" -e "s/${pcawg1id}//g" \
@@ -52,6 +54,7 @@ do
 
         mergevcf ${NEWDATA}/${sample}*{broad,sanger,dkfz}*${newfile_type}*vcf.gz $otherfiles \
                  | rename \
+                 | bcftools norm --check-ref x --fasta-ref ${REFERENCE} \
                  > merged/${pcawg1id}.${variant_type}.master.tmp
 
         grep "^#" merged/${pcawg1id}.${variant_type}.master.tmp  \
