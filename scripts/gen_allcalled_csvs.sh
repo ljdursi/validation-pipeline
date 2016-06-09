@@ -9,13 +9,13 @@ CASES[3]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 3{
 CASES[4]=$( cut -f 1,5 metadata/ValidationSamples.csv | tr -d \" | awk '$1 == 4{print $2}' )
 
 #DEFALLCALLDIR=/.mounts/labs/simpsonlab/users/jdursi/pcawg-validation-63/maskrepeats/master_norepeats/
-#DEFVALIDATIONVCFDIR=combined/germline-realigned
+#DEFCOMBINEDIR=combined/germline-realigned
 DEFALLCALLDIR=./newmasters/annotated
-DEFVALIDATIONVCFDIR=./combined/newmasters
+DEFCOMBINEDIR=./combined/newmasters
 DEFOUTDIR=./csvs/newmasters
 DEFEXCISE=""
 
-VALIDATIONVCFDIR=${VALIDATIONVCFDIR-${DEFVALIDATIONVCFDIR}}
+COMBINEDIR=${COMBINEDIR-${DEFCOMBINEDIR}}
 ALLCALLDIR=${ALLCALLDIR-${DEFALLCALLDIR}}
 OUTDIR=${OUTDIR-${DEFOUTDIR}}
 EXCISE=${EXCISE-${DEFEXCISE}}
@@ -33,7 +33,7 @@ do
             echo " all calls"
             ./scripts/combined_vcf_to_csv.py ${EXCISE} -t ${vartype} $files -o "${OUTDIR}/array${array}_allcalls_${vartype}.csv"
         fi
-        files=$( for case in ${CASES[$array]}; do ls "${VALIDATIONVCFDIR}/${case}.${vartype}.vcf" 2> /dev/null; done )
+        files=$( for case in ${CASES[$array]}; do ls "${COMBINEDIR}/${case}.${vartype}.vcf" 2> /dev/null; done )
         if [ ! -z "${files}" ]
         then
             echo " validated calls"
