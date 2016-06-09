@@ -13,7 +13,7 @@ do
         vcffile=${vcffile}.gz
     fi
     out="${vcffile%.*.*}".norm.vcf 
-    bcftools norm -m- -f $REFERENCE -o $out $vcffile 
+    bcftools norm --check-ref x -m- -f $REFERENCE -o $out $vcffile 
     bgzip $out
     tabix -p vcf ${out}.gz
 done

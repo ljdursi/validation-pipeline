@@ -17,7 +17,11 @@ do
     do
         arrayvcf=beds/Array_${array}_${vartype}.vcf
 
-        vcfcat ${VARIANTDIR}/../somatic_array_${array}/*.${vartype}.selected.vcf | vcfsort | sed -e 's/^chr//' | grep -v 'Callers=smufin;' > ${arrayvcf}
+        vcfcat ${VARIANTDIR}/../somatic_array_${array}/*.${vartype}.selected.vcf \
+            | vcfsort \
+            | sed -e 's/^chr//' \
+            | grep -v 'Callers=smufin;' \
+            > ${arrayvcf}
         bgzip ${arrayvcf}
         tabix -p vcf ${arrayvcf}.gz
 
