@@ -11,18 +11,17 @@
 # can be overridden at commandline, eg VCFDIR=vcfs ./run-call.sh
 DEFVCFDIR=vcfs/germline-realigned
 # output dir
-#DEFOUTDIR=combined/germline-realigned
-DEFOUTDIR=combined/newmasters
+DEFCOMBINEDIR=combined/newmasters
 # directory for original master vcfs
 #DEFWGSDIR=../validation_63_sftp_mirror/masked_repeats/somatic/
 DEFWGSDIR=./newmasters/annotated
 
 VCFDIR=${VCFDIR-${DEFVCFDIR}}
-OUTDIR=${OUTDIR-${DEFOUTDIR}}
+COMBINEDIR=${COMBINEDIR-${DEFCOMBINEDIR}}
 WGSDIR=${WGSDIR-${DEFWGSDIR}}
 
 echo "input directory:  ${VCFDIR}"
-echo "output directory: ${OUTDIR}"
+echo "output directory: ${COMBINEDIR}"
 echo "wgs directory:    ${WGSDIR}"
 
 for file in ${VCFDIR}/*.vcf
@@ -32,10 +31,10 @@ do
     donor=$( basename $donor .indel )
     donor=$( basename $donor .sv )
     masterfile=${WGSDIR}/${base}.master.vcf
-    if [ -f $masterfile ] && [ ! -f ${OUTDIR}/${base}.vcf ]
+    if [ -f $masterfile ] && [ ! -f ${COMBINEDIR}/${base}.vcf ]
     then
         echo "${file}:"
         ./scripts/add-germline-indel-dist-info.sh ${file} germline-calls/union/${donor}.vcf |\
-            ./scripts/merge-validation-selection.sh - ${masterfile} > ${OUTDIR}/${base}.vcf
+            ./scripts/merge-validation-selection.sh - ${masterfile} > ${COMBINEDIR}/${base}.vcf
     fi
 done 
