@@ -8,19 +8,23 @@ readonly OUTPUT=./merged
 
 function rename {
     sed -e "s/${sample}//g" -e "s/${pcawg1id}//g" \
-        -e 's/.somatic.snv_mnv.vcf//g' -e 's/_SNV.vcf//g' \
-        -e 's/_indel.vcf//g' -e 's/.somatic.indel.vcf//g' -e 's/_annotated_//g' \
-        -e 's/_*broad_*/broad_mutect/g' \
-        -e 's/_*dkfz_embl_*/dkfz/g' \
-        -e 's/\.mda_hgsc_gatk_muse\.[0-9]*/mda_hgsc_gatk_muse/g' \
-        -e 's/\.adiscan\.[0-9]*/adiscan/g' \
-        -e 's/\.lohcomplete\.[0-9]*/lohcomplete/g' \
-        -e 's/\.novobreak\.[0-9]*/novobreak/g' \
-        -e 's/\.oicr_sga\.[0-9]*/oicr_sga/g' \
+        -e 's/\.[0-9]*\.somatic\.snv_mnv\.vcf//g' -e 's/_SNV.vcf//g' \
+        -e 's/_annotated_//g' \
+        -e 's/_indel\.vcf//g' -e 's/\.[0-9]*\.somatic\.indel\.vcf//g' \
+        -e 's/dkfz_embl/dkfz/g' \
+        -e 's/\.mda_hgsc_gatk_muse/mda_hgsc_gatk_muse/g' \
+        -e 's/\.adiscan/adiscan/g' \
+        -e 's/\.lohcomplete/lohcomplete/g' \
+        -e 's/\.oicr_sga/oicr_sga/g' \
+        -e 's/\.broad_mutect/broad_mutect/g' \
+        -e 's/broad\([^_]\)/broad_snowman\1/g' \
+        -e 's/broad$/broad_snowman/g' \
         -e 's/tmp\.oicr_bl/oicr_bl/g' \
-        -e 's/\.smufin\.[0-9]*/smufin/g' \
-        -e 's/\.crg_clindel\.[0-9]*/crg_clindel/g' \
-        -e 's/\.wustl\.[0-9]*/wustl/g'
+        -e 's/\.smufin/smufin/g' \
+        -e 's/\.novobreak/novobreak/g' \
+        -e 's/\.crg_clindel/crg_clindel/g' \
+        -e 's/\.genomon_itdetector/genomon/g' \
+        -e 's/\.wustl/wustl/g'
 }
 
 samples=$( ls "${NEWDATA}"/*vcf.gz | xargs -n 1 basename | cut -f 1 -d _ | sort | uniq )
@@ -35,7 +39,7 @@ do
     do
         pcawg1id=$( ../scripts/pancanid_to_pcawg1id.sh $sample )
         echo "$variant_type $pcawg1id"
-        otherfiles=$( ls ${PROCESSED}/*/${pcawg1id}*.somatic.${variant_type}.vcf.gz | grep -v broad | grep -v sanger | grep -v dkfz | grep -v oicr_bl )
+        otherfiles=$( ls ${PROCESSED}/*/${pcawg1id}*.somatic.${variant_type}.vcf.gz | grep -v sanger | grep -v dkfz | grep -v oicr_bl )
 
         oicr_bl=$( ls ${PROCESSED}/oicr_bl/${pcawg1id}*.somatic.${variant_type}.vcf.gz 2> /dev/null )
         if [ ! -z "$oicr_bl" ] && [ -f "$oicr_bl" ]
