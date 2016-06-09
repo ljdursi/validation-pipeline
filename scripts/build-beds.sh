@@ -6,9 +6,14 @@ module load bcftools/1.1
 module load bedtools/2.24.0
 module load tabix
 
-ARRAYFILE=metadata/ValidationSamples.csv
-VARIANTDIR=selected-variants/somatic
-SLOP=50
+readonly ARRAYFILE=metadata/ValidationSamples.csv
+readonly VARIANTDIR=selected-variants/somatic
+readonly SLOP=50
+
+function f_vcf_sort {
+    grep -v '^#' \
+        | LC_ALL=C sort -t $'\t' -k1,1 -k2,2n
+}
 
 for array in 1 2 3 4
 #for array in 2
@@ -17,11 +22,13 @@ do
     do
         arrayvcf=beds/Array_${array}_${vartype}.vcf
 
+        cat beds/header.txt > ${arrayvcf}
         vcfcat ${VARIANTDIR}/../somatic_array_${array}/*.${vartype}.selected.vcf \
-            | vcfsort \
+            | grep -v "^#" \
             | sed -e 's/^chr//' \
-            > ${arrayvcf}
-        bgzip ${arrayvcf}
+            | f_vcf_sort \
+            >> ${arrayvcf}
+        bgzip -f ${arrayvcf}
         tabix -p vcf ${arrayvcf}.gz
 
         arraybed=${arrayvcf%.vcf}.bed
@@ -29,13 +36,13 @@ do
 
         inflatedbed=${arraybed%.bed}_inflated.bed
         bedtools slop -i ${arraybed} -b $SLOP -g beds/hg19.genome | bedtools merge -i - > ${inflatedbed}
-        bgzip ${inflatedbed}
+        bgzip -f ${inflatedbed}
         zcat ${inflatedbed}.gz > ${inflatedbed}
         tabix -p bed ${inflatedbed}.gz
 
         arraytargets=${arrayvcf%.vcf}.targets
-        bcftools query -f'%CHROM\t%POS\t%REF,%ALT\n' ${arrayvcf}.gz | bgzip -c > ${arraytargets}.gz
-        tabix -p vcf ${arraytargets}.gz
+        bcftools query -f'%CHROM\t%POS\t%REF,%ALT\n' ${arrayvcf}.gz | bgzip -f -c > ${arraytargets}.gz
+        tabix -p bed ${arraytargets}.gz
 
         mkdir -p beds/bysample
         for file in ${VARIANTDIR}/../somatic_array_${array}/*.${vartype}.selected.vcf
@@ -47,11 +54,11 @@ do
 
             fileinflatedbed=${base}_inflated.bed
             bedtools slop -i ${filebed} -b $SLOP -g beds/hg19.genome | bedtools merge -i - | sed -e 's/^chr//' > ${fileinflatedbed}
-            bgzip ${fileinflatedbed}
+            bgzip -f ${fileinflatedbed}
             zcat ${fileinflatedbed}.gz > ${fileinflatedbed}
             tabix -p bed ${fileinflatedbed}.gz
 
-            bcftools query -f'%CHROM\t%POS\t%REF,%ALT\n' <( cat ${file} | sed -e 's/^chr//' ) | bgzip -c > ${base}_targets.gz
+            bcftools query -f'%CHROM\t%POS\t%REF,%ALT\n' <( cat ${file} | sed -e 's/^chr//' ) | bgzip -f -c > ${base}_targets.gz
             zcat ${base}_targets.gz > ${base}_targets
             tabix -p vcf ${base}_targets.gz
         done
