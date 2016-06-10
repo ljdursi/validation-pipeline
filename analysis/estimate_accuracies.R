@@ -234,6 +234,9 @@ boxplots <- function(snvs, snv_calls, callers=c('broad_mutect','dkfz','sanger'),
   results = results[results$value != 0,]
   
   print(filter(results, value < 0.25))
+  print(summary(filter(results, caller=="stackedLogisticRegression", variable=="sensitivity")))
+  print(summary(filter(results, caller=="stackedLogisticRegression", variable=="precision")))
+  print(summary(filter(results, caller=="stackedLogisticRegression", variable=="f1")))
   
   ggplot(results) + geom_boxplot(aes(x=caller,y=value,color=caller)) + 
     facet_grid(variable ~ .) + ggtitle(title) + 
@@ -425,13 +428,13 @@ simple_indel_models <- function(validated.calls, all.calls, seed=1, threshold=0.
   print("SVM")
   l <- applymodel(l$snvs, l$snv_calls, svmlearn, svmpredict, 
 #                  as.formula("validate_true ~  repeat_count + wgs_nvaf + wgs_tvaf + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes+ broad_snowman*dkfz*sanger"), 
-                  as.formula("validate_true ~ repeat_count +  wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + dkfz*sanger*smufin*broad_snowman"), 
+                  as.formula("validate_true ~ repeat_count +  wgs_tvaf + wgs_tvardepth + wgs_nvaf + wgs_nvardepth + varlen + cosmic + dbsnp + thousand_genomes + dkfz*sanger*smufin*broad_snowman"), 
                   "svm_prob", seed=1)
   
   print("Stacked Logistic Regression")
   l <- applymodel(l$snvs, l$snv_calls, glmnetlearn, glmnetpredict, 
 #                  as.formula("validate_true ~ (broad_snowman + dkfz + sanger)*(wgs_nvaf + wgs_tvaf  + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + wgs_tvaf*wgs_tvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count)"), 
-                   as.formula("validate_true ~ (dkfz + sanger + smufin)*(wgs_tvaf*wgs_tvardepth + wgs_nvaf*wgs_nvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count + broad_snowman)"), 
+                   as.formula("validate_true ~ (dkfz + sanger + smufin)*(wgs_tvaf + wgs_tvardepth + wgs_nvaf + wgs_nvardepth + varlen + cosmic + dbsnp + thousand_genomes + repeat_masker + repeat_count + broad_snowman)"),
                    "stacked_logistic_regression", seed=1) 
   
   print("RandomForest")
