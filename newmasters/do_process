@@ -36,3 +36,8 @@ do
         | bgzip > processed/${base}
     tabix -p vcf processed/${base}
 done
+
+for file in "${INDIR}"/*smufin*vcf.gz*
+do
+    cp $file ${OUTDIR}
+done

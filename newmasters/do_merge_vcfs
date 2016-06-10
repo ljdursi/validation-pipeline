@@ -41,7 +41,7 @@ do
     do
         pcawg1id=$( ../scripts/pancanid_to_pcawg1id.sh $sample )
         echo "$variant_type $pcawg1id"
-        otherfiles=$( ls ${PROCESSED}/*/${pcawg1id}*.somatic.${variant_type}.vcf.gz | grep -v sanger | grep -v dkfz | grep -v oicr_bl )
+        otherfiles=$( ls ${PROCESSED}/*/${pcawg1id}*.somatic.${variant_type}.vcf.gz | grep -v sanger | grep -v dkfz | grep -v oicr_bl | grep -v smufin )
 
         oicr_bl=$( ls ${PROCESSED}/oicr_bl/${pcawg1id}*.somatic.${variant_type}.vcf.gz 2> /dev/null )
         if [ ! -z "$oicr_bl" ] && [ -f "$oicr_bl" ]
@@ -52,7 +52,9 @@ do
 
         otherfiles="${otherfiles} ${oicr_bl}"
 
-        mergevcf ${NEWDATA}/${sample}*{broad,sanger,dkfz}*${newfile_type}*vcf.gz $otherfiles \
+        files=$( ls ${NEWDATA}/${sample}*{broad,sanger,dkfz,smufin}*${newfile_type}*vcf.gz 2> /dev/null )
+#        mergevcf ${NEWDATA}/${sample}*{broad,sanger,dkfz,smufin}*${newfile_type}*vcf.gz $otherfiles \
+        mergevcf $files $otherfiles \
                  | rename \
                  | bcftools norm --check-ref x --fasta-ref ${REFERENCE} \
                  > merged/${pcawg1id}.${variant_type}.master.tmp
