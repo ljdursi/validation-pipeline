@@ -105,7 +105,7 @@ def filter_calls():
         record.FILTER = []
         if not call_from_depths(tumour_reads, tumour_evidence, args.error, args.callthreshold):
             record.FILTER += ['NOTSEEN']
-        if reject_from_strandbias(tumour_reads, tumour_evidence, args.strandbias):
+        if (tumour_reads > 0) and reject_from_strandbias(tumour_reads, tumour_evidence, args.strandbias):
             record.FILTER += ['STRANDBIAS']
         if not(normal_reads == 0 or tumour_reads == 0) and germline_hom_het(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
             record.FILTER += ['GERMLINE']
