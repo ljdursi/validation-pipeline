@@ -24,5 +24,5 @@ REFERENCE=${4-$DEFREF}
 if [ ! -f ${OUTPUT} ]
 then
     bam-readcount --reference-fasta $REFERENCE --site-list <( awk '{ printf "%s\t%d\t%d\n",$1,$2+1,$3+1 }' $TARGETS ) \
-        --max-count 8000 --max-warnings 0 $BAM > ${OUTPUT}
+       --min-mapping-quality 1 --max-count 8000 --max-warnings 0 $BAM > ${OUTPUT}
 fi
