@@ -5,6 +5,7 @@ VCF filter; make calls based on supporting depth
 from __future__ import print_function
 import argparse
 import vcf
+import vcf.parser
 import sys
 import numpy
 import scipy.stats
@@ -20,14 +21,18 @@ def call_from_depths(totdepth, evidence, error_rate, prob_threshold):
     prob = 1.-scipy.stats.binom.cdf(altdepth, totdepth, error_rate)
     return prob < prob_threshold
 
-def reject_from_strandbias(totdepth, evidence, strand_bias):
+def reject_from_strandbias(totdepth, evidence, prob_threshold, mindepth=30):
     if len(evidence) == 1:
         return False  # can't reject; don't have strand information
 
-    forward, reverse = evidence
-    if min([forward,reverse]) <= strand_bias*(forward+reverse):
-        return True
-    return False
+    if sum(evidence) < mindepth:
+        return False
+
+#    forward, reverse = evidence
+#    if min([forward,reverse]) <= strand_bias*(forward+reverse):
+#        return True
+    prob = 1.-scipy.stats.binom.cdf(max(evidence), sum(evidence), 0.66)
+    return prob < prob_threshold
 
 def germline_hom_het(n_depth, n_evidence, t_depth, t_evidence, alpha):
     # consistent w/ homozygous or het?  True
@@ -50,7 +55,7 @@ def reject_from_normal_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha)
     Returns: True if we cannot reject the null w/ probability 1-alpha
              False otherwise
 
-    Use binomial proportion test, eg http://itl.nist.gov/div898/software/dataplot/refman1/auxillar/binotest.htm
+    Use fisher exact test to determine if these are consistent
     """
     phat_tumour = sum(t_evidence)*1./t_depth
     phat_normal = sum(n_evidence)*1./n_depth
@@ -60,21 +65,17 @@ def reject_from_normal_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha)
     if phat_normal >= phat_tumour/2:
         return True
 
-    # consistent w/ phat_tumour, w/in factor of 2?  True
-    p1 = scipy.stats.binom_test(sum(n_evidence), n_depth, phat_tumour) 
-    p2 = scipy.stats.binom_test(sum(n_evidence), n_depth, phat_tumour/2)
-    p3 = scipy.stats.binom_test(sum(n_evidence), n_depth, min(phat_tumour*2,1.)) 
-    p = max(p1, p2, p3)
-
-    if p >= alpha:
+    oddsratio, prob = scipy.stats.fisher_exact([[sum(t_evidence)/2, sum(n_evidence)], [t_depth-sum(t_evidence)/2, n_depth-sum(n_evidence)]])
+    if prob < alpha:
+        return False
+    else:
         return True
-    return False
 #    phat = sum(t_evidence + n_evidence)*1./(t_depth + n_depth)
 #
-#    z = (phat_normal-phat_tumour)/numpy.sqrt(phat * (1-phat) * (1./(n_depth+.0001) + 1./(t_depth+.0001)) + 0.0001)
+#    z = (phat_normal-phat_tumour)/numpy.sqrt(phat * (1-phat) * (1./n_depth + 1./t_depth))
 #    if scipy.stats.norm.cdf(z) < alpha:
 #        return False
-#    return True
+    return True
 
 
 def filter_calls():
@@ -89,6 +90,9 @@ def filter_calls():
     args = parser.parse_args()
 
     vcf_reader = vcf.Reader(args.input)
+    vcf_reader.infos['Validation_status'] = vcf.parser._Info(id='Validation_status', num='.', type='String',
+                                                             desc='Status from validation data',
+                                                             source=None, version=None)
     vcf_writer = vcf.Writer(args.output, vcf_reader)
 
     for record in vcf_reader:
@@ -99,20 +103,24 @@ def filter_calls():
 
         if min(normal_reads, tumour_reads) < args.mindepth:
             record.FILTER = ['LOWDEPTH']
+            record.INFO['Validation_status'] = 'LOWDEPTH'
             vcf_writer.write_record(record)
             continue
 
         record.FILTER = []
-        if not call_from_depths(tumour_reads, tumour_evidence, args.error, args.callthreshold):
+        if not call_from_depths(tumour_reads, tumour_evidence, args.error, args.callthreshold) or sum(tumour_evidence) < 7:
             record.FILTER += ['NOTSEEN']
-        if (tumour_reads > 0) and reject_from_strandbias(tumour_reads, tumour_evidence, args.strandbias):
+        if (tumour_reads > 0) > 0 and reject_from_strandbias(tumour_reads, tumour_evidence, args.strandbias):
             record.FILTER += ['STRANDBIAS']
         if not(normal_reads == 0 or tumour_reads == 0) and germline_hom_het(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
             record.FILTER += ['GERMLINE']
-        elif not(normal_reads == 0 or tumour_reads == 0) and reject_from_normal_evidence(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
+        elif call_from_depths(normal_reads, normal_evidence, args.germlineprob, args.callthreshold):
             record.FILTER += ['NORMALEVIDENCE']
+#        elif not(normal_reads == 0 or tumour_reads == 0) and reject_from_normal_evidence(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
+#            record.FILTER += ['NORMALEVIDENCE']
         if len(record.FILTER) == 0:
             record.FILTER = ['PASS']
+        record.INFO['Validation_status'] = ','.join(record.FILTER)
         vcf_writer.write_record(record)
 
 if __name__ == "__main__":
