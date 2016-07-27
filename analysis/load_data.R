@@ -38,8 +38,7 @@ ingest_csv <- function(filename, callers, keep.lowdepth=FALSE, core_callers=c('b
   data$ref <- as.character(data$ref)
   data$alt <- as.character(data$alt)
   data$mnv <- ifelse( nchar(data$ref)>1, 1, 0 )
-  data$varlen <- nchar(data$alt) - nchar(data$ref)
-  
+
   core_caller_cols <- find_columns(names(data), core_callers)
   data$ncore <- rowSums(data[,core_caller_cols])
   
@@ -147,8 +146,8 @@ indel_calls$wgs_tvar_avgbaseposn <- 0
 # High Tumour-In-Normal contamination plays havoc  with somatic caller sensitivity;
 # do not train on these
 bad_samples <- c("a34f1dba-5758-45c8-b825-1c888d6c4c13","ae1fd34f-6a0f-43db-8edb-c329ccf3ebae")
-indels <- filter(snvs, !sample %in% bad_samples)
-indel_calls <- filter(snv_calls, !sample %in% bad_samples)
+indels <- filter(indels, !sample %in% bad_samples)
+indel_calls <- filter(indel_calls, !sample %in% bad_samples)
 snvs <- filter(snvs, !sample %in% bad_samples)
 snv_calls <- filter(snv_calls, !sample %in% bad_samples)
 

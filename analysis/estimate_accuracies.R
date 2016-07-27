@@ -328,8 +328,9 @@ only.required.columns <- function(formula, data, include.answer=TRUE, answer="va
   if (include.answer) {
     variables <- c(answer, variables)
   }
+
   subsetdata <- data[variables]
-#  print(summary(subsetdata))
+
   return(subsetdata)
 }
 
@@ -564,8 +565,8 @@ simple_snv_models <- function(validated.calls, all.calls, seed=1, threshold=0.5)
   l$snvs$logisticRegression <- binarize(l$snvs$logistic_regression, thresh=threshold)
   l$snv_calls$logisticRegression <- binarize(l$snv_calls$logistic_regression, thresh=threshold)
   
-  l$snvs$decisionTree <- binarize(l$snvs$decision_tree)
-  l$snv_calls$decisionTree <- binarize(l$snv_calls$decision_tree)
+  l$snvs$decisionTree <- binarize(l$snvs$decision_tree, thresh=threshold)
+  l$snv_calls$decisionTree <- binarize(l$snv_calls$decision_tree, thresh=threshold)
   
   l$snvs$stackedLogisticRegression <- binarize(l$snvs$stacked_logistic_regression, thresh=threshold)
   l$snv_calls$stackedLogisticRegression <- binarize(l$snv_calls$stacked_logistic_regression, thresh=threshold)
