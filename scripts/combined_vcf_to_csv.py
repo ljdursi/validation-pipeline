@@ -31,7 +31,7 @@ def parse_combined(files, output, callers, excise=False):
     Parse a list of combined VCFs into a single CSV
     """
     headerfields = ['chrom', 'pos', 'sample', 'status', 'ref', 'alt',
-                    'val_tvaf', 'val_nvaf', 'val_tdepth', 'val_ndepth']
+                    'val_tvaf', 'val_nvaf', 'val_tdepth', 'val_ndepth', 'varlen']
 
     # some columns require special handling: most just involve
     # copying the field, perhaps applying some transformation.  This
@@ -62,8 +62,7 @@ def parse_combined(files, output, callers, excise=False):
             return "NA"
 
 
-    fielddict = {'varlen':('varlen', int_or_NA),
-                 'repeat_masker':('repeat_masker', binarize),
+    fielddict = {'repeat_masker':('repeat_masker', binarize),
                  'cosmic':('cosmic', one_if_present),
                  'thousand_genomes':('thousand_genomes', one_if_present),
                  'dbsnp':('dbsnp', one_if_present),
@@ -103,6 +102,7 @@ def parse_combined(files, output, callers, excise=False):
             itemdict['chrom'], itemdict['pos'] = items[0], items[1]
             itemdict['status'], itemdict['ref'], itemdict['alt'] = items[6], items[3], items[4]
             itemdict['sample'] = sample_id
+            itemdict['varlen'] = len(itemdict['alt']) - len(itemdict['ref'])
             itemdict['indel_dist'] = "NA"
             if 'GERMLINE' in itemdict['status']:
                 itemdict['status'] = 'GERMLINE'
@@ -131,7 +131,7 @@ def parse_combined(files, output, callers, excise=False):
                 # Deal with the callers: Take the last one
                 if key == 'Callers':
                     for caller in callers:
-                        if caller in field:
+                        if caller in val:
                             itemdict[caller] = '1'
                         else:
                             itemdict[caller] = '0'
