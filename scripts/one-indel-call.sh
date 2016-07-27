@@ -33,10 +33,11 @@ then
 ##FILTER=<ID=STRANDBIAS,Description="Too much strand bias in Tumour sample to validate the call">
 ##FILTER=<ID=NORMALEVIDENCE,Description="Evidence for presence in normal sample">
 ##FILTER=<ID=GERMLINE,Description="Germline het or hom">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 EOF
-    ./scripts/snv_indel_call.py --error 0.01 --callthreshold 0.02 --mindepth 25 --strandbias -1 --germlineprob 0.05 \
+    ./scripts/snv_indel_call.py --error 0.0025 --callthreshold 0.02 --mindepth 25 --strandbias -1 --germlineprob 0.0025 \
         -i ${INPUT_VCF} \
         | sed -e 's/;;/;/' \
-        | grep -v "^##" \
+        | grep -v "^#" \
         | sort -k1,1 -k2,2n | sed -e 's/^\([1-9XYh]\)/chr\1/' >> ${OUTPUT_VCF}
 fi
