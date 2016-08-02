@@ -238,9 +238,9 @@ boxplots <- function(snvs, snv_calls, callers=c('broad_mutect','dkfz','sanger'),
   print(summary(filter(results, caller=="stackedLogisticRegression", variable=="precision")))
   print(summary(filter(results, caller=="stackedLogisticRegression", variable=="f1")))
   
-  ggplot(results) + geom_boxplot(aes(x=caller,y=value,color=caller)) + 
+  ggplot(results,aes(x=caller,y=value,color=caller)) + geom_boxplot() + 
     facet_grid(variable ~ .) + ggtitle(title) + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), text = element_text(size=20)) + ylab('Accuracy')
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), text = element_text(size=20)) + ylab('Accuracy') + geom_point(position=position_jitter(width=0.5),size=1)
 }
 
 require(dplyr)
@@ -434,8 +434,7 @@ simple_indel_models <- function(validated.calls, all.calls, seed=1, threshold=0.
   
   print("Stacked Logistic Regression")
   l <- applymodel(l$snvs, l$snv_calls, glmnetlearn, glmnetpredict, 
-#                  as.formula("validate_true ~ (broad_snowman + dkfz + sanger)*(wgs_nvaf + wgs_tvaf  + wgs_nvardepth + wgs_tvardepth + wgs_nvaf*wgs_nvardepth + wgs_tvaf*wgs_tvardepth + varlen + cosmic:dbsnp + thousand_genomes + repeat_count)"), 
-                   as.formula("validate_true ~ (dkfz + sanger + smufin)*(wgs_tvaf + wgs_tvardepth + wgs_nvaf + wgs_nvardepth + varlen + cosmic + dbsnp + thousand_genomes + repeat_masker + repeat_count + broad_snowman)"),
+                   as.formula("validate_true ~ (dkfz + sanger + smufin)*(wgs_tvaf + wgs_tvardepth + wgs_nvaf + wgs_nvardepth + varlen + cosmic + dbsnp + thousand_genomes + repeat_count + broad_snowman)"),
                    "stacked_logistic_regression", seed=1) 
   
   print("RandomForest")
