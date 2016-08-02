@@ -72,8 +72,9 @@ ingest_csv <- function(filename, callers, keep.lowdepth=FALSE, core_callers=c('b
   data$repeat_count[is.na(data$repeat_count)] <- 0
   
   data$indelsize <- abs(nchar(data$ref) - nchar(data$alt))
-  if (max(data$indelsize, na.RM=TRUE) > 1)
-    data$binned_indelsize <- cut(data$indelsize, c(0,3,5,10,25,50,100,250,Inf), include.lowest=TRUE, ordered_result=TRUE)
+#  if (max(data$indelsize, na.RM=TRUE) > 1)
+  if (sum(complete.cases(data$varlen))>0 && max(data$varlen, na.RM=TRUE)>1)
+    data$binned_indelsize <- cut(abs(data$varlen), c(0,3,5,10,25,50,100,250,Inf), include.lowest=TRUE, ordered_result=TRUE)
 #  if (sum(complete.cases(data$repeat_count))>0 && max(data$repeat_count, na.RM=TRUE) > 1)
 #    data$binned_homopolymer <- cut( data$repeat_count, c(0, 3, 10, 30, Inf), include.lowest=TRUE, ordered_result=TRUE)
   return(data)
@@ -146,6 +147,7 @@ indel_calls$wgs_tvar_avgbaseposn <- 0
 # High Tumour-In-Normal contamination plays havoc  with somatic caller sensitivity;
 # do not train on these
 bad_samples <- c("a34f1dba-5758-45c8-b825-1c888d6c4c13","ae1fd34f-6a0f-43db-8edb-c329ccf3ebae")
+
 indels <- filter(indels, !sample %in% bad_samples)
 indel_calls <- filter(indel_calls, !sample %in% bad_samples)
 snvs <- filter(snvs, !sample %in% bad_samples)

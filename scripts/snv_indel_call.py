@@ -116,8 +116,8 @@ def filter_calls():
             record.FILTER += ['GERMLINE']
         elif call_from_depths(normal_reads, normal_evidence, args.germlineprob, args.callthreshold):
             record.FILTER += ['NORMALEVIDENCE']
-#        elif not(normal_reads == 0 or tumour_reads == 0) and reject_from_normal_evidence(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
-#            record.FILTER += ['NORMALEVIDENCE']
+        elif not(normal_reads == 0 or tumour_reads == 0) and reject_from_normal_evidence(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
+            record.FILTER += ['NORMALEVIDENCE']
         if len(record.FILTER) == 0:
             record.FILTER = ['PASS']
         record.INFO['Validation_status'] = ','.join(record.FILTER)

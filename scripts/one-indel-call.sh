@@ -35,7 +35,7 @@ then
 ##FILTER=<ID=GERMLINE,Description="Germline het or hom">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 EOF
-    ./scripts/snv_indel_call.py --error 0.0025 --callthreshold 0.02 --mindepth 25 --strandbias -1 --germlineprob 0.0025 \
+    ./scripts/snv_indel_call.py --error 0.005 --callthreshold 0.02 --mindepth 25 --strandbias -1 --germlineprob 0.005 \
         -i ${INPUT_VCF} \
         | sed -e 's/;;/;/' \
         | grep -v "^#" \
