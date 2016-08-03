@@ -1,3 +1,5 @@
+source('analysis/posnintegral.R')
+
 dummy.lines <- function(template, n, vafprobs=c(1,0,0,0,0)) {
   
   tmp <- template[1:n,]
@@ -240,7 +242,7 @@ boxplots <- function(snvs, snv_calls, callers=c('broad_mutect','dkfz','sanger'),
   
   ggplot(results,aes(x=caller,y=value,color=caller)) + geom_boxplot() + 
     facet_grid(variable ~ .) + ggtitle(title) + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), text = element_text(size=20)) + ylab('Accuracy') + geom_point(position=position_jitter(width=0.5),size=1)
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), text = element_text(size=20)) + ylab('Accuracy') + geom_point(position=position_integral(width=0.5),size=1)
 }
 
 require(dplyr)
