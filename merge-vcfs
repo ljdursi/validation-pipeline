@@ -16,9 +16,9 @@ DEFCOMBINEDIR=combined/newmasters
 #DEFWGSDIR=../validation_63_sftp_mirror/masked_repeats/somatic/
 DEFWGSDIR=./newmasters/annotated
 
-VCFDIR=${VCFDIR-${DEFVCFDIR}}
-COMBINEDIR=${COMBINEDIR-${DEFCOMBINEDIR}}
-WGSDIR=${WGSDIR-${DEFWGSDIR}}
+readonly VCFDIR=${VCFDIR-${DEFVCFDIR}}
+readonly COMBINEDIR=${COMBINEDIR-${DEFCOMBINEDIR}}
+readonly WGSDIR=${WGSDIR-${DEFWGSDIR}}
 
 echo "input directory:  ${VCFDIR}"
 echo "output directory: ${COMBINEDIR}"
@@ -27,14 +27,10 @@ echo "wgs directory:    ${WGSDIR}"
 for file in ${VCFDIR}/*.vcf
 do
     base=$( basename $file .vcf )
-    donor=$( basename $base .snv_mnv )
-    donor=$( basename $donor .indel )
-    donor=$( basename $donor .sv )
     masterfile=${WGSDIR}/${base}.master.vcf
     if [ -f $masterfile ] && [ ! -f ${COMBINEDIR}/${base}.vcf ]
     then
-        echo "${file}:"
-        ./scripts/add-germline-indel-dist-info.sh ${file} germline-calls/union/${donor}.vcf |\
-            ./scripts/merge-validation-selection.sh - ${masterfile} > ${COMBINEDIR}/${base}.vcf
+        qsub -cwd -e logs -o logs -N merge_${base} ./scripts/one-merge-vcf.sh \
+            ${file} ${WGSDIR} ${COMBINEDIR}
     fi
 done 
