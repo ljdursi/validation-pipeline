@@ -21,7 +21,7 @@ modelROC <- function(data, model, allcalls, corrected=TRUE) {
 }
 
 library(party)
-library(ggplot2)
+#library(ggplot2)
 
 rocplot <- function(data, allcalls, callers, modelcallers, derived, title, 
                     xlim=c(0,1), ylim=c(0,1), include.models=TRUE, ntrials=10) {

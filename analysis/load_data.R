@@ -146,7 +146,7 @@ indel_calls$wgs_tvar_avgbaseposn <- 0
 
 # High Tumour-In-Normal contamination plays havoc  with somatic caller sensitivity;
 # do not train on these
-bad_samples <- c("a34f1dba-5758-45c8-b825-1c888d6c4c13","ae1fd34f-6a0f-43db-8edb-c329ccf3ebae")
+bad_samples <- c("a34f1dba-5758-45c8-b825-1c888d6c4c13","ae1fd34f-6a0f-43db-8edb-c329ccf3ebae","5e4bbb6b-66b2-4787-b8ce-70d17bc80ba8", "290d8791-2515-4baa-9c5f-60f6ec97f33a")
 
 indels <- filter(indels, !sample %in% bad_samples)
 indel_calls <- filter(indel_calls, !sample %in% bad_samples)
@@ -157,9 +157,9 @@ common_and_unmasked <- function(data) filter(data, repeat_masker==0)
 
 few_repeats <- function(data, thresh=5) filter(data, repeat_count < thresh)
 
-snvs <- common_and_unmasked(snvs)
+#snvs <- common_and_unmasked(snvs)
 indels <- common_and_unmasked(indels)
-snv_calls <- common_and_unmasked(snv_calls)
+#snv_calls <- common_and_unmasked(snv_calls)
 indel_calls <- common_and_unmasked(indel_calls)
 
 snvs$gencode <- ifelse(snvs$gencode=="", 0, 1)

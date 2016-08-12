@@ -1,4 +1,3 @@
-source('analysis/posnintegral.R')
 
 dummy.lines <- function(template, n, vafprobs=c(1,0,0,0,0)) {
   
@@ -229,6 +228,7 @@ library(reshape2)
 #library(ggplot2)
 
 boxplots <- function(snvs, snv_calls, callers=c('broad_mutect','dkfz','sanger'), samples=levels(snvs$sample), title="Distribution of Per-Sample Accuracies") {
+  source('analysis/posnintegral.R')
   result.list <- lapply(callers, function(x) corrected.accuracies(snvs, snv_calls, x, combine=c('concordance')))
   results <- do.call(rbind, result.list)
   results <- results[results$sample %in% samples,]
@@ -240,9 +240,14 @@ boxplots <- function(snvs, snv_calls, callers=c('broad_mutect','dkfz','sanger'),
   print(summary(filter(results, caller=="stackedLogisticRegression", variable=="precision")))
   print(summary(filter(results, caller=="stackedLogisticRegression", variable=="f1")))
   
-  ggplot(results,aes(x=caller,y=value,color=caller)) + geom_boxplot() + 
-    facet_grid(variable ~ .) + ggtitle(title) + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), text = element_text(size=20)) + ylab('Accuracy') + geom_point(position=position_integral(width=0.5),size=1)
+  # we're turning off the outliers only because they (and all others) are shown with geom_point.  
+  # If you get rid of geom_point, you _have_ to put back the outliers, or you're a terrible human being.
+  ggplot(results,aes(x=caller,y=value,color=caller)) + geom_boxplot(outlier.shape = NA) + 
+    facet_grid(variable ~ .) + 
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), text = element_text(size=20)) + 
+    ylab('Accuracy') + geom_point(position=position_integral(width=0.5),size=1) +
+    guides(color=FALSE) + xlab(NULL)
 }
 
 require(dplyr)

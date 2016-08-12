@@ -10,7 +10,7 @@ position_integral <- function(width = NULL, height = NULL) {
 "%||%" <- function(a, b) {
   if (!is.null(a)) a else b
 }
-
+#require(ggplot2)
 PositionIntegral <- ggproto("PositionIntegral", Position,
                           required_aes = c("x", "y"),
                           

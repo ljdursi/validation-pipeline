@@ -144,8 +144,8 @@ corrected.accuracies <- function(validated.calls, all.calls, caller,
   return(df)
 }
 
-corrected.accuracies.by.caller <- function(validated.call.data, all.call.data, callers) {
-  results <- do.call(rbind, lapply(callers, function(x) corrected.accuracies(validated.call.data, all.call.data, x)))
+corrected.accuracies.by.caller <- function(validated.call.data, all.call.data, callers, ...) {
+  results <- do.call(rbind, lapply(callers, function(x) corrected.accuracies(validated.call.data, all.call.data, x, ...)))
   return(results)
 }
 
