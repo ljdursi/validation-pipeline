@@ -1,0 +1,4 @@
+[[annotation]]
+file="./processed/@@SAMPLE@@_annotated_dkfz_embl_indel.vcf.gz"
+fields = ["3pContext", "5pContext", "NormalVarDepth", "NormalTotalDepth", "NormalVAF", "TumorVarDepth", "TumorTotalDepth", "TumorVAF", "RepeatRefCount", "RepeatUnit" ]
+ops=["self", "self", "self", "self", "self", "self", "self", "self", "self", "self"]

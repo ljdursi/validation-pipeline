@@ -1,0 +1,104 @@
+#!/bin/bash
+module load vcfanno
+
+#echo "<$0> <$1> <$2> <$3>"
+
+function usage_and_exit {
+    >&2 echo "annotate_one_file input_file output_file variant_type"
+    >&2 echo "                  where variant_type is snv_mnv or indel"
+    exit 1
+}
+
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ ! -f "$1" ]
+then
+    usage_and_exit
+fi
+
+readonly INFILE=$1
+readonly OUTFILE=$2
+readonly VARIANT=$3
+
+if [ -f "${OUTFILE}" ] && [ "${OUTFILE}" -nt "${INFILE}" ]
+then
+    >&2 echo "$0: ${OUTFILE} is newer: cowardly refusing to overwrite"
+    exit 0
+fi
+
+if [ "$VARIANT" != "snv_mnv" ] && [ "$VARIANT" != "indel" ]
+then
+    usage_and_exit
+fi
+
+function renamefields {
+    local filename=$1
+    sed -i -e 's/3pContext/wgs_3pContext/g' \
+           -e 's/5pContext/wgs_5pContext/g' \
+           -e 's/GermIndelDist/wgs_GermIndelDist/g' \
+           -e 's/NormalEvidenceReads/wgs_NormalEvidenceReads/g' \
+           -e 's/NormalReads/wgs_NormalReads/g'  \
+           -e 's/NormalTotalDepth/wgs_NormalTotalDepth/g' \
+           -e 's/NormalVAF/wgs_NormalVAF/g' \
+           -e 's/NormalVarDepth/wgs_NormalVarDepth/g' \
+           -e 's/RepeatRefCount/wgs_RepeatRefCount/g'  \
+           -e 's/RepeatUnit/wgs_RepeatUnit/g'  \
+           -e 's/TumorVAF/wgs_TumorVAF/g' \
+           -e 's/TumourReads/wgs_TumorReads/g'  \
+           -e 's/TumorVarDepth/wgs_TumorVarDepth/g' \
+           -e 's/TumourAvgVarBaseQ/wgs_TumorAvgVarBaseQ/g'  \
+           -e 's/TumourAvgVarMapQ/wgs_TumorAvgVarMapQ/g' \
+           -e 's/TumourAvgVarPosn/wgs_TumorAvgVarPosn/g' \
+           -e 's/TumourEvidenceReads/wgs_TumorEvidenceReads/g'  \
+           -e 's/TumorTotalDepth/wgs_TumorReads/g' \
+           -e 's/TumorTotalDepth/wgs_TumorTotalDepth/g'  \
+           -e 's/ID=SOMATIC,Number=0/ID=muse_feature,Number=1/' \
+           -e 's/SOMATIC/muse_feature/g'  \
+           ${filename}
+}
+
+base=$( basename $INFILE )
+pcawg1id=$( echo $base | cut -f 1 -d . )
+pancanid=$( ../scripts/pcawg1id_to_pancanid.sh ${pcawg1id} )
+
+TMPFILE1=${OUTFILE}.tmp1.vcf 
+TMPFILE2=${OUTFILE}.tmp2.vcf 
+TMPCONF=${OUTFILE}.annotations.conf
+
+echo -n "${VARIANT}: ${pcawg1id} "
+# generate by-file annotation configuration file
+rm -f ${TMPCONF}; touch ${TMPCONF}
+if [[ "${VARIANT}" == "snv_mnv" ]]
+then
+    sed -e "s/@@SAMPLE@@/${pancanid}/" annotation/${VARIANT}_annotations.conf.template > ${TMPCONF}
+else
+    for caller in broad dkfz_embl sanger smufin
+    do
+        if [[ -f "./processed/${pancanid}_annotated_${caller}_indel.vcf.gz" ]]
+        then
+            sed -e "s/@@SAMPLE@@/${pancanid}/" annotation/${caller}_${VARIANT}_annotations.conf.template >> ${TMPCONF}
+        fi
+    done
+fi
+
+# step 1: add dbsnp, cosmic, gencode
+echo -n " dbsnp/cosmic/gencode "
+vcfanno -p 1 -lua annotation/custom.lua annotation/dbsnp+cosmic+gencode.conf ${INFILE} 2>> logs/annotate_errs.log \
+    | sed -e 's/gencode=[A-Za-z,]*;//' \
+    > ${TMPFILE1}
+
+# step 2: add uniform snv annotations, muse-as-feature
+echo -n " uniform annotations "
+vcfanno -p 1 ${TMPCONF} ${TMPFILE1} > ${TMPFILE2} 2>> logs/annotate_errs.log
+
+# step 3: calculate VAFs from uniform snv annotations
+if [ "$VARIANT" == "snv_mnv" ] 
+then
+    echo -n " vafs "
+    vcfanno -p 1 -lua annotation/custom.lua annotation/vaf.conf ${TMPFILE2} \
+        > ${OUTFILE} 2>> logs/annotate_errs.log
+else
+    cp ${TMPFILE2} ${OUTFILE}
+fi
+echo ""
+
+renamefields ${OUTFILE}
+rm -f ${TMPFILE1} ${TMPFILE2} ${TMPCONF}

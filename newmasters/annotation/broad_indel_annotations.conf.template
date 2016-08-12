@@ -1,0 +1,4 @@
+[[annotation]]
+file="./processed/@@SAMPLE@@_annotated_broad_indel.vcf.gz"
+fields = ["3pContext", "5pContext", "NormalVarDepth", "NormalTotalDepth", "NormalVAF", "TumorVarDepth", "TumorTotalDepth", "TumorVAF", "RepeatRefCount", "RepeatUnit", "TSPLIT" ]
+ops=["self", "self", "self", "self", "self", "self", "self", "self", "self", "self", "self"]
