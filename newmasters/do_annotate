@@ -2,7 +2,7 @@
 module load vcfanno
 module load parallel
 
-DEFNJOBS=6
+DEFNJOBS=4
 NJOBS=${NJOBS:-${DEFNJOBS}}
 
 readonly IN_DIR=./merged
@@ -13,7 +13,6 @@ function infile_outfile_from_infile {
     do
         local base=$( basename $infile )
         local pcawg1id=$( echo $base | cut -f 1 -d . )
-        local pancanid=$( ../scripts/pcawg1id_to_pancanid.sh ${pcawg1id} )
 
         local outfile=${OUT_DIR}/${pcawg1id}.${variant}.master.vcf 
         echo ${infile} ${outfile}
