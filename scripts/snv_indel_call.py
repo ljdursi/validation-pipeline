@@ -28,9 +28,6 @@ def reject_from_strandbias(totdepth, evidence, prob_threshold, mindepth=30):
     if sum(evidence) < mindepth:
         return False
 
-#    forward, reverse = evidence
-#    if min([forward,reverse]) <= strand_bias*(forward+reverse):
-#        return True
     prob = 1.-scipy.stats.binom.cdf(max(evidence), sum(evidence), 0.66)
     return prob < prob_threshold
 
@@ -46,6 +43,23 @@ def germline_hom_het(n_depth, n_evidence, t_depth, t_evidence, alpha):
         return True
     return False
 
+
+def reject_from_normal_evidence_vs_noise(n_depth, n_evidence, t_depth, t_evidence, error_rate):
+    phat_tumour = sum(t_evidence)*1./t_depth
+    phat_normal = sum(n_evidence)*1./n_depth
+    if phat_normal == 0.:
+        return False
+
+    if phat_normal >= phat_tumour/2:
+        return True
+
+    # is the normal evidence more consistent with the tumour evidence (over a factor of 2, in case of LOH),
+    # or noise?
+    oddsratio, prob_normal = scipy.stats.fisher_exact([[sum(t_evidence)/2, sum(n_evidence)], [t_depth-sum(t_evidence)/2, n_depth-sum(n_evidence)]])
+    prob_noise = 1.-scipy.stats.binom.cdf(sum(n_evidence), n_depth, error_rate)
+    if prob_normal >= prob_noise:
+        return True
+    return False
 
 def reject_from_normal_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha):
     """
@@ -70,11 +84,6 @@ def reject_from_normal_evidence(n_depth, n_evidence, t_depth, t_evidence, alpha)
         return False
     else:
         return True
-#    phat = sum(t_evidence + n_evidence)*1./(t_depth + n_depth)
-#
-#    z = (phat_normal-phat_tumour)/numpy.sqrt(phat * (1-phat) * (1./n_depth + 1./t_depth))
-#    if scipy.stats.norm.cdf(z) < alpha:
-#        return False
     return True
 
 
@@ -108,15 +117,13 @@ def filter_calls():
             continue
 
         record.FILTER = []
-        if not call_from_depths(tumour_reads, tumour_evidence, args.error, args.callthreshold) or sum(tumour_evidence) < 7:
-            record.FILTER += ['NOTSEEN']
+        if sum(tumour_evidence) < 7 or not call_from_depths(tumour_reads, tumour_evidence, args.error, args.callthreshold):
+            record.FILTER = ['NOTSEEN']
         if (tumour_reads > 0) > 0 and reject_from_strandbias(tumour_reads, tumour_evidence, args.strandbias):
             record.FILTER += ['STRANDBIAS']
-        if not(normal_reads == 0 or tumour_reads == 0) and germline_hom_het(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
+        if germline_hom_het(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
             record.FILTER += ['GERMLINE']
-        elif call_from_depths(normal_reads, normal_evidence, args.germlineprob, args.callthreshold):
-            record.FILTER += ['NORMALEVIDENCE']
-        elif not(normal_reads == 0 or tumour_reads == 0) and reject_from_normal_evidence(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.germlineprob):
+        elif reject_from_normal_evidence_vs_noise(normal_reads, normal_evidence, tumour_reads, tumour_evidence, args.error):
             record.FILTER += ['NORMALEVIDENCE']
         if len(record.FILTER) == 0:
             record.FILTER = ['PASS']

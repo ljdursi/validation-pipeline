@@ -34,7 +34,7 @@ then
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 EOF
     ./scripts/snv_readcounts.py ${INPUT_VCF} ${NORMAL_RC} ${TUMOUR_RC} | \
-        ./scripts/snv_indel_call.py --error 0.01 --callthreshold 0.02 --strandbias 0.001 --germlineprob 0.01 --mindepth 25 \
+        ./scripts/snv_indel_call.py --error 0.01 --callthreshold 0.02 --strandbias 0.001 --germlineprob 0.01 --mindepth 30 \
         | sed -e 's/;;/;/' \
         | grep -v "^#" \
         | sort -k1,1 -k2,2n  >> ${OUTPUT_VCF}
