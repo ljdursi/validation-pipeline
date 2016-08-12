@@ -39,5 +39,8 @@ done
 
 for file in "${INDIR}"/*smufin*vcf.gz*
 do
-    cp $file ${OUTDIR}
+    base=$( basename "$file" )
+    zcat "$file" \
+        | bgzip > processed/${base}
+    tabix -p vcf processed/${base}
 done
