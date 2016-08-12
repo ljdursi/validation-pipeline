@@ -2,7 +2,7 @@ source('analysis/precision_recall.R')
 #
 # Data
 #
-snv_callers <- c("adiscan", "broad_mutect", "dkfz", "lohcomplete", "mda_hgsc_gatk_muse", "oicr_bl", "oicr_sga", "sanger", "smufin", "wustl")
+snv_callers <- c("adiscan", "broad_mutect", "dkfz", "lohcomplete", "mda_hgsc_gatk_muse", "oicr_bl", "oicr_sga", "sanger", "wustl")
 indel_callers <- c("broad_mutect", "crg_clindel", "dkfz", "novobreak", "oicr_sga", "sanger", "smufin", "wustl")
 sv_callers <- c("broad_merged", "destruct", "embl_delly", "novobreak", "sanger", "smufin")
 snv_indel_core_callers <- c("broad_mutect", "dkfz", "sanger")
@@ -195,37 +195,39 @@ plot_vs_total_calls <- function(data, all_calls, variable, caller_name = "broad_
 }
 
 matplotlib.colours <- function(n) {
-  twothirds = as.integer(n*2/3); otherthird = n-twothirds
-  half = as.integer(n/2); otherhalf = n-half;
+  nint <- as.integer(n)
+  twothirds = as.integer(nint*2/3); otherthird = nint-twothirds
+  half = as.integer(nint/2); otherhalf = nint-half;
   r <- c( 0.5, seq(.2, 1, length.out=twothirds-1), rep(1., otherthird))
   g <- c( seq(0, 1, length.out=half), seq(1, 0, length.out=otherhalf))
-  b <- seq(1, 0, length.out=n)
+  b <- seq(1, 0, length.out=nint)
   
   l <- lapply(1:n, function(i) c(r[i],g[i],b[i]))
   sapply(l, function(x) rgb(x[1],x[2],x[3],1))
 }
 
-plot_concordance <- function(caller_list, core_caller_list, data, title="") {
+plot_concordance <- function(caller_list, core_caller_list, data) {
   
-  df <- data.frame(caller=character(), concordance=integer(), freq=integer())
-  
+  df <- data.frame(caller=character(), concordance=integer())
   for(c in caller_list) {
-    sub <- data[data[c] == 1,]
-    c_df <- count(sub, "concordance")
-    c_df$caller = c
-    df = rbind(df, c_df)
+    sub <- data %>% filter(data[c]==1 ) %>% select(as.integer(concordance)) %>% mutate(caller=c)
+    df = rbind(df, sub)
   }
+  minc <- min(df$concordance)
+  maxc <- max(df$concordance)
   
   new_caller_order <- c(core_caller_list, caller_list[!caller_list %in% core_caller_list])
   df$caller <- factor(df$caller, levels=new_caller_order)
   
-  df$concordance <- factor(df$concordance)
-  colnames(df) <- c("concordance", "count", "caller")
+  levs = sapply(seq(maxc, minc, -1), as.character)
+  df$concordance <- factor(as.character(df$concordance), levels=levs)
   
-  print(df)
-  ggplot(df, aes(x = caller, y = count, fill=concordance, order=-as.integer(concordance))) +
-    geom_bar(stat = "identity") + scale_fill_manual(values=rev(matplotlib.colours(max(as.integer(df$concordance))))) +
-    ggtitle(title) + theme(text = element_text(size=20), axis.text.x = element_text(angle=45, hjust=1)) 
+  ggplot(df, aes(x=caller)) +
+    geom_bar(aes(fill=concordance), alpha=0.8) + scale_fill_manual(values=matplotlib.colours(maxc)) +
+    theme_bw() +
+    theme(text = element_text(size=20), axis.text.x = element_text(angle=45, hjust=1)) +
+#S    scale_y_continuous(breaks=seq(0,1e6,2e5),labels=c('0','200,000','400,000','600,000','800,000','1,000,000'))
+    scale_y_continuous(breaks=seq(0,1e5,2e4),labels=c('0','20,000','40,000','60,000','80,000','100,000'))
 }
 
 plot.corrected.sensitivity.by.vaf <- function(data) {
